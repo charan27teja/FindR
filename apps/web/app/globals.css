@@ -36,6 +36,17 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
+/* Tailwind v4 preflight sets buttons to cursor: default. Put the hand back
+   once here rather than sprinkling cursor-pointer on every button. */
+button:not(:disabled),
+[role="button"]:not(:disabled) {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
 /* Loading — the wordmark screen: settles in, then clears itself. */
 @keyframes logo-in {
   from { opacity: 0; letter-spacing: 0.4em; }
