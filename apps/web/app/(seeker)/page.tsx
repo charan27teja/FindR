@@ -2,6 +2,7 @@ import Link from "next/link";
 import { db } from "@/lib/db/client";
 import { requireUser } from "@/lib/auth";
 import SearchBar from "./SearchBar";
+import DashboardDrawer from "@/components/DashboardDrawer";
 
 type Org = { id: string; name: string; slug: string; type: string };
 
@@ -44,7 +45,10 @@ export default async function Home() {
     <main className="mx-auto flex min-h-dvh max-w-2xl flex-col px-6">
       {/* Top bar: logo left, profile right */}
       <header className="rise flex items-center justify-between py-5">
-        <h1 className="text-2xl font-semibold tracking-tight">Findr</h1>
+        <div className="flex items-center gap-2">
+          <DashboardDrawer workspaces={[...workspaces.values()]} />
+          <h1 className="text-2xl font-semibold tracking-tight">Findr</h1>
+        </div>
         <Link
           href="/profile"
           aria-label="Profile"

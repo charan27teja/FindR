@@ -183,3 +183,61 @@ button:disabled {
   }
 }
 
+
+/* Dashboard drawer — a left-anchored native <dialog>. `margin: 0` defeats the
+   UA's centring; the browser keeps the focus trap, Escape and inert page. */
+.drawer {
+  margin: 0;
+  height: 100dvh;
+  max-height: 100dvh;
+  width: min(20rem, 85vw);
+  max-width: none;
+  padding: 0;
+  border: 0;
+  border-right: 1px solid rgba(0, 0, 0, 0.1);
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.drawer::backdrop {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+@keyframes drawer-in {
+  from { transform: translateX(-100%); }
+  to   { transform: none; }
+}
+
+@keyframes backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Open only. Closing is not animated: a native dialog leaves the DOM on close,
+   so an exit needs allow-discrete plumbing that buys nothing here. */
+.drawer[open] {
+  animation: drawer-in 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.drawer[open]::backdrop {
+  animation: backdrop-in 0.28s ease;
+}
+
+/* Keycap, for the hint in the drawer footer. */
+.kbd {
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 0.25rem;
+  padding: 0.05rem 0.3rem;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.7rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .drawer { border-right-color: rgba(255, 255, 255, 0.12); }
+  .kbd { border-color: rgba(255, 255, 255, 0.25); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer[open],
+  .drawer[open]::backdrop { animation: none; }
+}
