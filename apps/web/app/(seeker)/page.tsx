@@ -61,14 +61,14 @@ export default async function Home() {
       </header>
 
       {/* Search bar below header */}
-      <div className="rise" style={{ animationDelay: "60ms" }}>
+      <div className="search-container rise relative z-20" style={{ animationDelay: "60ms" }}>
         <SearchBar orgs={orgList} />
       </div>
 
-      <div className="flex flex-1 flex-col justify-center gap-8 py-10">
+      <div className="content-container flex flex-1 flex-col justify-center gap-8 py-10">
         {/* Public venues — one tap to the busiest lost-and-found desks */}
         {places.length > 0 && (
-          <section>
+          <section className="popular-section">
             <h2
               className="rise mb-3 text-xs font-medium uppercase tracking-wider text-neutral-500"
               style={{ animationDelay: "120ms" }}
@@ -97,7 +97,6 @@ export default async function Home() {
             </ul>
           </section>
         )}
-
         {/* Center CTA buttons */}
         <div className="flex flex-row items-stretch gap-4">
           <Link

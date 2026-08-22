@@ -26,7 +26,7 @@ export default function SearchBar({ orgs }: { orgs: Org[] }) {
     : orgs;
 
   return (
-    <div ref={wrapperRef} className="relative">
+    <div ref={wrapperRef} className="relative z-50">
       <div className="relative">
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -49,19 +49,19 @@ export default function SearchBar({ orgs }: { orgs: Org[] }) {
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setOpen(true)}
           placeholder="Search stations, campuses, events"
-          className="w-full rounded-lg border border-neutral-300 bg-transparent py-2.5 pl-9 pr-4 text-sm outline-none focus:border-neutral-900 dark:border-neutral-700 dark:focus:border-neutral-100"
+          className="w-full rounded-lg border border-foreground/20 bg-transparent py-2.5 pl-9 pr-4 text-sm outline-none focus:border-foreground"
         />
       </div>
 
       {open && (
-        <ul className="absolute left-0 right-0 top-full z-10 mt-1 max-h-64 overflow-y-auto rounded-lg border border-neutral-200 bg-background shadow-lg dark:border-neutral-800">
+        <ul className="search-dropdown absolute left-0 right-0 top-full z-50 mt-2 max-h-64 overflow-y-auto rounded-lg border border-foreground/15 bg-[var(--background)] py-1.5 shadow-xl">
           {filtered.length > 0 ? (
             filtered.map((o) => (
               <li key={o.id}>
                 <Link
                   href={`/search/${o.id}`}
                   onClick={() => setOpen(false)}
-                  className="block px-4 py-3 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                  className="block px-4 py-3 transition-colors hover:bg-foreground/5"
                 >
                   <span className="font-medium">{o.name}</span>
                   <span className="block text-xs uppercase tracking-wide text-neutral-500">
