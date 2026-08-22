@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { OrgIcon } from "@/components/OrgIcon";
 
 interface OrgItem {
   id: string;
@@ -34,6 +35,69 @@ export default function OrgListClient({
           o.events.some((e) => e.name.toLowerCase().includes(q)),
       )
     : orgs;
+
+  const publicOrgs = filtered.filter((o) => o.type === "PUBLIC");
+  const privateOrgs = filtered.filter((o) => o.type !== "PUBLIC");
+
+  const renderOrgList = (orgList: OrgItem[]) => (
+    <ul className="flex flex-col">
+      {orgList.map((o) => (
+        <li key={o.id} className="border-b border-white/10 last:border-b-0 pb-4 mb-2">
+          <Link
+            href={intent === "report" ? `/search/${o.id}?report=1` : `/search/${o.id}?report=0`}
+            className="flex w-full items-center gap-4 py-4 text-left transition-colors hover:bg-white/5 active:bg-white/10 rounded-xl px-2 -mx-2"
+          >
+            {/* Icon */}
+            <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-[#1A1A1A] text-white">
+              <OrgIcon name={o.name} className="w-5 h-5 text-neutral-400" />
+            </div>
+
+            {/* Org name */}
+            <div className="min-w-0 flex-1">
+              <span className="block truncate text-[15px] font-medium text-white">
+                {o.name}
+              </span>
+              <span className="block text-xs text-[#AAAAAA]">
+                {o.type.toLowerCase().replace("_", " ")}
+              </span>
+            </div>
+
+            {/* Chevron */}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="flex-shrink-0 text-white/40"
+            >
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </Link>
+          {/* Clickable Event List */}
+          {o.events.length > 0 && (
+            <ul className="mt-1 ml-[3.75rem] flex flex-col gap-1 border-l border-white/10 pl-3">
+              {o.events.map((e) => (
+                <li key={e.id}>
+                  <Link
+                    href={intent === "report" ? `/search/${o.id}?report=1&event=${e.id}` : `/search/${o.id}?report=0&event=${e.id}`}
+                    className="block py-2 text-left transition-colors hover:bg-white/5 active:bg-white/10 rounded-md px-2 -mx-2"
+                  >
+                    <span className="block truncate text-[13px] text-white/80">{e.name}</span>
+                    <span className="block text-[11px] text-[#AAAAAA]">{e.when}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
 
   return (
     <div className="min-h-dvh bg-black text-white flex flex-col max-w-md mx-auto">
@@ -104,60 +168,24 @@ export default function OrgListClient({
       {/* Organisation list */}
       <div className="flex-1 overflow-y-auto px-6 pb-8">
         {filtered.length > 0 ? (
-          <ul className="flex flex-col">
-            {filtered.map((o) => (
-              <li key={o.id}>
-                <Link
-                  href={intent === "report" ? `/search/${o.id}?report=1` : `/search/${o.id}`}
-                  className="flex w-full items-center gap-4 border-b border-white/10 py-4 text-left transition-colors hover:bg-white/5 active:bg-white/10"
-                >
-                  {/* Circular icon placeholder */}
-                  <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-[#1A1A1A] text-sm font-bold text-white">
-                    {o.name.slice(0, 2).toUpperCase()}
-                  </div>
-
-                  {/* Org name */}
-                  <div className="min-w-0 flex-1">
-                    <span className="block truncate text-[15px] font-medium text-white">
-                      {o.name}
-                    </span>
-                    <span className="block text-xs text-[#AAAAAA]">
-                      {o.type.toLowerCase().replace("_", " ")}
-                    </span>
-                  </div>
-
-                  {/* Chevron */}
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="flex-shrink-0 text-white/40"
-                  >
-                    <path d="m9 18 6-6-6-6" />
-                  </svg>
-                </Link>
-                {/* Context for the choice, not links: selecting the
-                    organisation is the action, and an event's own page belongs
-                    to the organiser who scheduled it. */}
-                {o.events.length > 0 && (
-                  <ul className="-mt-2 mb-3 ml-[3.75rem] flex flex-col gap-1 border-l border-white/10 pl-3">
-                    {o.events.map((e) => (
-                      <li key={e.id}>
-                        <span className="block truncate text-[13px] text-white/80">{e.name}</span>
-                        <span className="block text-[11px] text-[#AAAAAA]">{e.when}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </li>
-            ))}
-          </ul>
+          <div className="flex flex-col gap-8">
+            {publicOrgs.length > 0 && (
+              <div>
+                <h2 className="text-xs font-semibold uppercase tracking-widest text-[#777777] mb-3 px-1">
+                  Public Places
+                </h2>
+                {renderOrgList(publicOrgs)}
+              </div>
+            )}
+            {privateOrgs.length > 0 && (
+              <div>
+                <h2 className="text-xs font-semibold uppercase tracking-widest text-[#777777] mb-3 px-1">
+                  Private Events & Organisations
+                </h2>
+                {renderOrgList(privateOrgs)}
+              </div>
+            )}
+          </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-20">
             <svg
