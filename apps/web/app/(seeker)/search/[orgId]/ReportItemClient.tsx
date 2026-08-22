@@ -100,11 +100,7 @@ export default function ReportItemClient({
   }
 
   function analyse() {
-    if (!photo) {
-      // No photo — skip AI analysis and go straight to the review form.
-      setStep("review");
-      return;
-    }
+    if (!photo) return;
     setStep("processing");
     startAnalyse(async () => {
       const result = await analyseFoundItem(photo, {
@@ -229,8 +225,8 @@ export default function ReportItemClient({
                   <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z" />
                   <circle cx="12" cy="13" r="3" />
                 </svg>
-                <span className="text-sm font-medium">Add a photo (optional)</span>
-                <span className="mt-1 text-xs text-[#777777]">A photo from your gallery helps us match faster.</span>
+                <span className="text-sm font-medium">Photograph the item</span>
+                <span className="mt-1 text-xs text-[#777777]">Upload a photo of the item you lost.</span>
               </div>
             )}
           </div>
@@ -249,7 +245,7 @@ export default function ReportItemClient({
                 type="button"
                 onClick={() => (photo ? retake() : cameraRef.current?.click())}
                 className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-white/40 text-white transition-colors hover:border-white hover:bg-white/10"
-                aria-label={photo ? "Change photo" : "Add a photo"}
+                aria-label={photo ? "Retake the photo" : "Take a photo"}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                   {photo ? (
@@ -265,16 +261,16 @@ export default function ReportItemClient({
                   )}
                 </svg>
               </button>
-              <span className="text-xs text-[#AAAAAA]">{photo ? "Change photo" : "Add a photo"}</span>
+              <span className="text-xs text-[#AAAAAA]">{photo ? "Retake photo" : "Take a photo"}</span>
             </div>
 
             <button
               type="button"
               onClick={analyse}
-              disabled={pendingAnalyse}
+              disabled={!photo || pendingAnalyse}
               className="w-full rounded-full bg-white py-3.5 text-center text-sm font-semibold text-black transition-all duration-150 hover:bg-neutral-200 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-30"
             >
-              {photo ? "Continue" : "Skip photo — describe it myself"}
+              Continue
             </button>
           </div>
         </>
