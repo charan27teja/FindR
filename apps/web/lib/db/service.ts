@@ -1,5 +1,5 @@
 import "server-only";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { mockSupabaseClient } from "./mock";
 
 /**
@@ -12,7 +12,10 @@ import { mockSupabaseClient } from "./mock";
  * Never hand its output to a serialiser other than the ones in lib/serializers.
  * `server-only` makes importing this from a client component a build error.
  */
-export function serviceDb(): ReturnType<typeof createClient> {
+// `ReturnType<typeof createClient>` collapses the schema generic to `never`,
+// which makes every .insert() through this client a type error. SupabaseClient's
+// own defaults are what callers actually want.
+export function serviceDb(): SupabaseClient {
   if (process.env.DEMO_MODE === "true") return mockSupabaseClient as any;
 
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;

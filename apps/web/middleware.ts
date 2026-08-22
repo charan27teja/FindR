@@ -7,6 +7,15 @@ export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
   const path = request.nextUrl.pathname;
 
+  if (path.startsWith("/admin") && path !== "/admin/login") {
+    const adminSession = request.cookies.get("admin_session");
+    if (adminSession?.value !== "active") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/admin/login";
+      return NextResponse.redirect(url);
+    }
+  }
+
   if (process.env.DEMO_MODE === "true") {
     if (PUBLIC_PATHS.some((p) => path.startsWith(p))) {
       return NextResponse.redirect(new URL("/", request.url));

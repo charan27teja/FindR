@@ -109,6 +109,17 @@ export default function DashboardDrawer({ workspaces }: { workspaces: Workspace[
                 </p>
               )}
               <Link
+                href="/orgs/new"
+                onClick={close}
+                className="chip mt-3 flex items-center justify-center gap-2 rounded-xl border border-dashed border-neutral-400 px-4 py-3 text-sm font-medium dark:border-neutral-600"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <path d="M12 5v14" />
+                  <path d="M5 12h14" />
+                </svg>
+                New organisation
+              </Link>
+              <Link
                 href="/orgs"
                 onClick={close}
                 className="mt-3 block text-sm text-neutral-500 underline underline-offset-4 hover:text-foreground"
