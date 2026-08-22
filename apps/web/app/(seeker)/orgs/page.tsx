@@ -1,23 +1,12 @@
-import Link from "next/link";
 import { db } from "@/lib/db/client";
 import { requireUser } from "@/lib/auth";
-import { eventWhen } from "./[orgId]/when";
+import OrgListClient from "./OrgListClient";
 
 type OrgRow = {
   id: string;
   name: string;
   slug: string;
   type: string;
-};
-
-type EventRow = {
-  id: string;
-  org_id: string;
-  name: string;
-  event_date: string;
-  end_date: string | null;
-  starts_at: string;
-  ends_at: string;
 };
 
 export default async function OrgsPage({
@@ -56,78 +45,21 @@ export default async function OrgsPage({
   }
   const orgs = [...found.values()].sort((a, b) => a.name.localeCompare(b.name));
 
-  // Every event of every org that surfaced, not just the ones that matched.
-  const { data: shownEvents } = orgs.length
-    ? await supabase
-        .from("events")
-        .select("id,org_id,name,event_date,end_date,starts_at,ends_at")
-        .in("org_id", orgs.map((o) => o.id))
-        .order("event_date")
-    : { data: [] as EventRow[] };
-  const eventsOf = (orgId: string) => ((shownEvents ?? []) as EventRow[]).filter((e) => e.org_id === orgId);
+  const orgList = orgs.map((o) => ({
+    id: o.id,
+    name: o.name,
+    slug: o.slug,
+    type: o.type,
+    joinCode: null,
+    isJoined: false, // removed in main
+  }));
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-6 px-6 py-10">
-      <Link href="/" className="text-sm text-neutral-500">
-        ← Back
-      </Link>
-      <h1 className="text-2xl font-semibold tracking-tight">
-        {intent === "report" ? "Where did you lose it?" : "Where are you looking?"}
-      </h1>
-
-      <form className="contents">
-        <input
-          name="q"
-          defaultValue={q}
-          placeholder="Search stations, campuses, events"
-          className="w-full rounded-lg border border-foreground/20 bg-transparent px-4 py-3 outline-none focus:border-foreground"
-        />
-        <input type="hidden" name="intent" value={intent} />
-      </form>
- 
-      {error && <p className="text-sm text-accent">{error}</p>}
- 
-      {orgs.length ? (
-        <ul className="flex flex-col gap-2">
-          {orgs.map((o) => (
-            <li
-              key={o.id}
-              className="rounded-lg border border-foreground/10 px-4 py-3"
-            >
-              <div className="flex items-baseline justify-between gap-3">
-                <span className="font-medium">{o.name}</span>
-                <span className="text-xs uppercase tracking-wide text-neutral-500">
-                  {o.type.toLowerCase().replace("_", " ")}
-                </span>
-              </div>
-              {/* Listed as context for the choice, not as links — an event's own
-                  page belongs to the organiser who scheduled it. */}
-              {eventsOf(o.id).length > 0 && (
-                <ul className="mt-2 flex flex-col gap-1 border-l-2 border-foreground/15 pl-3">
-                  {eventsOf(o.id).map((e) => (
-                    <li key={e.id} className="py-1">
-                      <span className="block truncate text-sm">{e.name}</span>
-                      <span className="block text-xs text-neutral-500">{eventWhen(e)}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {/* Selecting is the whole interaction: nothing is granted, nothing
-                  is stored, the intent just rides through to the desk's page. */}
-              <Link
-                href={intent === "report" ? `/search/${o.id}?report=1` : `/search/${o.id}`}
-                className="mt-2 block rounded bg-accent px-4 py-2 text-center text-sm text-background"
-              >
-                Select
-              </Link>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="rounded-lg border border-dashed border-foreground/20 px-4 py-8 text-center text-sm text-neutral-500">
-          Nothing here yet. Organisations appear once their lost-and-found desk signs up.
-        </p>
-      )}
-    </main>
+    <OrgListClient
+      orgs={orgList}
+      intent={intent}
+      initialQuery={q}
+      error={error}
+    />
   );
 }
