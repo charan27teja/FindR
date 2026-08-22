@@ -68,7 +68,7 @@ export default async function OrgsPage({
                     className="min-w-0 flex-1 rounded border border-neutral-300 bg-transparent px-3 py-2 text-sm dark:border-neutral-700"
                   />
                 )}
-                <button className="ml-auto rounded bg-accent px-4 py-2 text-sm text-white">
+                <button className="ml-auto rounded bg-accent px-4 py-2 text-sm text-background">
                   {joined.has(o.id) ? "Continue" : "Join"}
                 </button>
               </form>

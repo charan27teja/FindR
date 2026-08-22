@@ -1,18 +1,18 @@
 @import "tailwindcss";
 
-/* §12 — monochrome, with exactly ONE reserved accent.
-   The accent marks state and the primary action. Never decoration. */
+/* §12 — monochrome. Black and white only: the "accent" is simply the
+   foreground, so a primary button is an inversion of the page rather than
+   a hue. Reintroduce a real accent here when the palette is decided. */
 :root {
   --background: #ffffff;
-  --foreground: #171717;
-  --accent: #1d4ed8;
+  --foreground: #000000;
+  --accent: var(--foreground);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --accent: #3b82f6;
+    --background: #000000;
+    --foreground: #ffffff;
   }
 }
 
@@ -28,4 +28,40 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* Splash — holds the wordmark, then fades to reveal the page underneath.
+   CSS-only so there is no timer to clear and no hydration flash; it plays
+   once per page load and `visibility` keeps it from eating clicks after. */
+@keyframes splash-out {
+  0%, 62%  { opacity: 1; visibility: visible; }
+  100%     { opacity: 0; visibility: hidden; }
+}
+
+@keyframes splash-mark-in {
+  from { opacity: 0; letter-spacing: 0.4em; }
+  to   { opacity: 1; letter-spacing: 0.12em; }
+}
+
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--background);
+  animation: splash-out 2.6s ease-in-out forwards;
+}
+
+.splash-mark {
+  font-size: clamp(2rem, 12vw, 3.5rem);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  animation: splash-mark-in 1.1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash { animation: splash-out 1.2s step-end forwards; }
+  .splash-mark { animation: none; letter-spacing: 0.12em; }
 }
