@@ -27,3 +27,12 @@ insert into nodes (id, org_id, parent_id, name, kind) values
   ('00000000-0000-0000-0000-0000000000a4','00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-0000000000a1','Canteen','building'),
   ('00000000-0000-0000-0000-0000000000a5','00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-0000000000a1','Sports Complex','building')
 on conflict (id) do nothing;
+
+-- Public venues. These surface as the "Popular nearby" quick links on the
+-- home page purely by being type PUBLIC — no hardcoded list in the UI.
+insert into orgs (id, name, slug, type) values
+  ('00000000-0000-0000-0000-000000000011','Hyderabad Metro','hyd-metro','PUBLIC'),
+  ('00000000-0000-0000-0000-000000000012','Secunderabad Railway Station','secunderabad-rail','PUBLIC'),
+  ('00000000-0000-0000-0000-000000000013','Rajiv Gandhi International Airport','rgia','PUBLIC'),
+  ('00000000-0000-0000-0000-000000000014','MGBS Bus Terminal','mgbs','PUBLIC')
+on conflict (id) do nothing;
