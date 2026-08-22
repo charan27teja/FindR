@@ -3,7 +3,7 @@
 import { serviceDb } from '@/lib/db/service';
 import { revalidatePath } from 'next/cache';
 
-export async function createPublicOrg(prevState: any, formData: FormData) {
+export async function createPublicOrg(prevState: unknown, formData: FormData) {
   const name = formData.get('name') as string;
   const slug = formData.get('slug') as string;
   

@@ -1,6 +1,6 @@
 import React from 'react';
 import { serviceDb } from '@/lib/db/service';
-import { AdminClientPage } from './AdminClientPage';
+import { AdminClientPage } from './AdminClientPage.tsx';
 
 export const metadata = {
   title: 'Admin Dashboard - Findr',
@@ -8,7 +8,7 @@ export const metadata = {
 
 export default async function AdminPage() {
   const db = serviceDb();
-  
+
   // Fetch only public organisations
   const { data: orgs, error } = await db
     .from('orgs')

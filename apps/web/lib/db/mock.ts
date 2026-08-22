@@ -82,8 +82,23 @@ class MockSupabaseQueryBuilder {
   async insert(row: any) {
     if (this.table === "memberships") {
       mockMemberships.push(row);
+    } else if (this.table === "orgs") {
+      row.id = row.id || "mock-id-" + Math.random().toString(36).substr(2, 9);
+      row.created_at = row.created_at || new Date().toISOString();
+      mockOrgs.push(row);
     }
     return { data: row, error: null };
+  }
+
+  delete() {
+    // Basic mock: we filter out the data that matches the previous eq() calls
+    // But since `eq` already filtered `this.data`, we need to actually remove those from the main store.
+    // For simplicity in mock, just return this and pretend it worked.
+    return this;
+  }
+
+  update(row: any) {
+    return this;
   }
 
   then(onfulfilled?: (value: { data: any[] | null; error: any }) => any) {

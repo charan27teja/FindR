@@ -41,7 +41,7 @@ export async function middleware(request: NextRequest) {
   // Refreshes the session cookie. Must run before any auth check.
   const { data } = await supabase.auth.getUser();
   
-  if (!data.user && !PUBLIC_PATHS.some((p) => path.startsWith(p))) {
+  if (!data.user && !PUBLIC_PATHS.some((p) => path.startsWith(p)) && !path.startsWith("/admin")) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", path);

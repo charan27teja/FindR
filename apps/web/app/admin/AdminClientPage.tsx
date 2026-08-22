@@ -3,7 +3,15 @@
 import React, { useActionState, useState } from 'react';
 import { createPublicOrg, deletePublicOrg } from './actions';
 
-export function AdminClientPage({ initialOrgs }: { initialOrgs: any[] }) {
+export interface Org {
+  id: string;
+  name: string;
+  slug: string;
+  type: string;
+  created_at: string;
+}
+
+export function AdminClientPage({ initialOrgs }: { initialOrgs: Org[] }) {
   const [state, formAction, isPending] = useActionState(createPublicOrg, null);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
