@@ -83,3 +83,78 @@ export const PRIVATE_ITEM_FIELDS = [
   "bin",
   "logged_by",
 ] as const;
+
+// --- Organisations & events ------------------------------------------------
+/**
+ * Event pricing. The single source of truth: the create form previews it live,
+ * the server action recomputes it on submit, and `events.price_inr` stores the
+ * result. Retune these two numbers and everything follows.
+ */
+export const EVENT_BASE_FEE_INR = 500;
+export const EVENT_PER_HEAD_INR = 10;
+
+export function eventPrice(capacity: number): number {
+  if (!Number.isFinite(capacity) || capacity <= 0) return 0;
+  return EVENT_BASE_FEE_INR + Math.floor(capacity) * EVENT_PER_HEAD_INR;
+}
+
+export const formatInr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
+
+const trimmed = z.string().trim();
+
+/** An untouched form field arrives as "" — that means absent, not invalid. */
+const blankToNull = (v: unknown) => (typeof v === "string" && v.trim() === "" ? null : v);
+
+/** One responsible person. Reachable by email or phone — at least one. */
+export const OrgContact = z
+  .object({
+    email: z.preprocess(
+      blankToNull,
+      trimmed.email("That email address does not look right.").nullable(),
+    ),
+    phone: z.preprocess(
+      blankToNull,
+      trimmed
+        .min(6, "That phone number looks too short.")
+        .max(20, "That phone number looks too long.")
+        .nullable(),
+    ),
+  })
+  .refine((c) => c.email || c.phone, { message: "Give an email or a phone number." });
+export type OrgContact = z.infer<typeof OrgContact>;
+
+export const MAX_ORG_CONTACTS = 3;
+
+export const NewOrg = z.object({
+  name: trimmed.min(2, "Name the organisation.").max(120),
+  location: trimmed.min(2, "Where is it?").max(200),
+  contacts: z
+    .array(OrgContact)
+    .min(1, "Add at least one contact.")
+    .max(MAX_ORG_CONTACTS, `At most ${MAX_ORG_CONTACTS} contacts.`),
+});
+export type NewOrg = z.infer<typeof NewOrg>;
+
+export const NewEvent = z
+  .object({
+    name: trimmed.min(2, "Name the event.").max(120),
+    event_date: trimmed.regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a date."),
+    starts_at: trimmed.regex(/^\d{2}:\d{2}/, "Pick a start time."),
+    ends_at: trimmed.regex(/^\d{2}:\d{2}/, "Pick an end time."),
+    capacity: z.coerce.number().int().positive("Capacity must be at least 1.").max(1_000_000),
+  })
+  .refine((e) => e.ends_at > e.starts_at, {
+    message: "The event must end after it starts.",
+    path: ["ends_at"],
+  });
+export type NewEvent = z.infer<typeof NewEvent>;
+
+/** URL-safe, collision-resistant enough for a hackathon; uniqueness is the DB's job. */
+export function slugify(name: string): string {
+  const base = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+  return base || "org";
+}
