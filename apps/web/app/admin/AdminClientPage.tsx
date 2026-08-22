@@ -2,6 +2,7 @@
 
 import React, { useActionState, useState } from 'react';
 import { createPublicOrg, deletePublicOrg } from './actions';
+import { OrgIcon } from '@/components/OrgIcon';
 
 export interface Org {
   id: string;
@@ -93,19 +94,24 @@ export function AdminClientPage({ initialOrgs }: { initialOrgs: Org[] }) {
           ) : (
             initialOrgs.map((org) => (
               <li key={org.id} className="flex items-center justify-between gap-x-6 px-4 py-5 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] sm:px-6 transition-colors">
-                <div className="min-w-0">
-                  <div className="flex items-start gap-x-3">
-                    <p className="text-sm font-semibold leading-6 text-gray-900 dark:text-white">{org.name}</p>
-                    <p className="rounded-md whitespace-nowrap mt-0.5 px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset text-green-700 bg-green-50 ring-green-600/20 dark:bg-green-500/10 dark:text-green-400 dark:ring-green-500/20">
-                      Public
-                    </p>
+                <div className="flex min-w-0 gap-x-4 items-center">
+                  <div className="flex h-10 w-10 flex-none items-center justify-center rounded-lg bg-neutral-100 dark:bg-neutral-800">
+                    <OrgIcon name={org.name} className="h-5 w-5 text-neutral-500" />
                   </div>
-                  <div className="mt-1 flex items-center gap-x-2 text-xs leading-5 text-gray-500 dark:text-gray-400">
-                    <p className="truncate">Slug: {org.slug}</p>
-                    <svg viewBox="0 0 2 2" className="h-0.5 w-0.5 fill-current">
-                      <circle cx={1} cy={1} r={1} />
-                    </svg>
-                    <p className="truncate">Created {new Date(org.created_at).toLocaleDateString()}</p>
+                  <div className="min-w-0">
+                    <div className="flex items-start gap-x-3">
+                      <p className="text-sm font-semibold leading-6 text-gray-900 dark:text-white">{org.name}</p>
+                      <p className="rounded-md whitespace-nowrap mt-0.5 px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset text-green-700 bg-green-50 ring-green-600/20 dark:bg-green-500/10 dark:text-green-400 dark:ring-green-500/20">
+                        Public
+                      </p>
+                    </div>
+                    <div className="mt-1 flex items-center gap-x-2 text-xs leading-5 text-gray-500 dark:text-gray-400">
+                      <p className="truncate">Slug: {org.slug}</p>
+                      <svg viewBox="0 0 2 2" className="h-0.5 w-0.5 fill-current">
+                        <circle cx={1} cy={1} r={1} />
+                      </svg>
+                      <p className="truncate">Created {new Date(org.created_at).toLocaleDateString()}</p>
+                    </div>
                   </div>
                 </div>
                 <div className="flex flex-none items-center gap-x-4">

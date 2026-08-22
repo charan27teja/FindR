@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
+import { OrgIcon } from "@/components/OrgIcon";
 
 type Org = { id: string; name: string; slug: string; type: string };
 export type Workspace = { org: Org; roles: string[] };
@@ -115,12 +116,15 @@ export default function DashboardDrawer({ workspaces }: { workspaces: Workspace[
                         onClick={close}
                         className="chip flex items-center justify-between gap-3 rounded-xl border border-neutral-200 px-4 py-3 dark:border-neutral-800"
                       >
-                        <span className="min-w-0">
-                          <span className="block truncate font-medium">{org.name}</span>
-                          <span className="block text-xs uppercase tracking-wide text-neutral-500">
-                            {roles.map((r) => r.toLowerCase().replace("_", " ")).join(" · ")}
+                        <div className="flex items-center gap-3 min-w-0">
+                          <OrgIcon name={org.name} className="w-5 h-5 text-neutral-400 shrink-0" />
+                          <span className="min-w-0">
+                            <span className="block truncate font-medium">{org.name}</span>
+                            <span className="block text-xs uppercase tracking-wide text-neutral-500">
+                              {roles.map((r) => r.toLowerCase().replace("_", " ")).join(" · ")}
+                            </span>
                           </span>
-                        </span>
+                        </div>
                         <span aria-hidden className="text-neutral-400">→</span>
                       </Link>
                     </li>

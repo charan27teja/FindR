@@ -3,6 +3,7 @@ import { db } from "@/lib/db/client";
 import { requireUser } from "@/lib/auth";
 import SearchBar from "./SearchBar";
 import DashboardDrawer from "@/components/DashboardDrawer";
+import { OrgIcon } from "@/components/OrgIcon";
 
 type Org = { id: string; name: string; slug: string; type: string };
 type EventLite = {
@@ -122,10 +123,7 @@ export default async function Home() {
                     href={orgHref(o)}
                     className="chip flex items-center gap-2 rounded-full border border-neutral-300 px-4 py-2 text-sm dark:border-neutral-700"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-neutral-400">
-                      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
-                      <circle cx="12" cy="10" r="3" />
-                    </svg>
+                    <OrgIcon name={o.name} className="w-[14px] h-[14px] text-neutral-400 shrink-0" />
                     {o.name}
                   </Link>
                 </li>
@@ -198,12 +196,15 @@ export default async function Home() {
                     href={`/orgs/${org.id}`}
                     className="chip flex items-center justify-between gap-3 rounded-xl border border-neutral-200 px-4 py-3 dark:border-neutral-800"
                   >
-                    <span className="min-w-0">
-                      <span className="block truncate font-medium">{org.name}</span>
-                      <span className="block text-xs uppercase tracking-wide text-neutral-500">
-                        {roles.map((r) => r.toLowerCase().replace("_", " ")).join(" · ")}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <OrgIcon name={org.name} className="w-5 h-5 text-neutral-400 shrink-0" />
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium">{org.name}</span>
+                        <span className="block text-xs uppercase tracking-wide text-neutral-500">
+                          {roles.map((r) => r.toLowerCase().replace("_", " ")).join(" · ")}
+                        </span>
                       </span>
-                    </span>
+                    </div>
                     <span aria-hidden className="text-neutral-400">→</span>
                   </Link>
                 </li>
