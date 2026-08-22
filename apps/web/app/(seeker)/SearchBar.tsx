@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { eventWhen } from "./orgs/[orgId]/when";
 import { OrgIcon } from "@/components/OrgIcon";
@@ -24,7 +25,6 @@ export default function SearchBar({ orgs, events = [] }: { orgs: Org[]; events?:
   // event is and asks which of the two things you are here to do.
   const [chosen, setChosen] = useState<EventLite | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const dialogRef = useRef<HTMLDialogElement>(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -37,10 +37,20 @@ export default function SearchBar({ orgs, events = [] }: { orgs: Org[]; events?:
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  // showModal() rather than an `open` attribute: that is what buys the focus
-  // trap, Escape and the inert page behind, none of which we want to rebuild.
   useEffect(() => {
-    if (chosen) dialogRef.current?.showModal();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setChosen(null);
+    };
+    if (chosen) {
+      window.addEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "";
+    };
   }, [chosen]);
 
   const q = query.trim().toLowerCase();
@@ -217,69 +227,65 @@ export default function SearchBar({ orgs, events = [] }: { orgs: Org[]; events?:
         </ul>
       )}
 
-      {/* Clicking the backdrop is not the browser's job — the click lands on
-          the dialog element itself, so compare against its box. */}
-      <dialog
-        ref={dialogRef}
-        aria-label={chosen ? chosen.name : "Event"}
-        className="modal"
-        onClose={() => setChosen(null)}
-        onClick={(e) => {
-          const box = e.currentTarget.getBoundingClientRect();
-          const outside =
-            e.clientX < box.left || e.clientX > box.right || e.clientY < box.top || e.clientY > box.bottom;
-          if (outside) e.currentTarget.close();
-        }}
-      >
-        {chosen && (
-          <div className="flex flex-col gap-4 p-5">
-            <header className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h2 className="text-lg font-semibold tracking-tight">{chosen.name}</h2>
-                <p className="text-sm text-neutral-500">
+      {/* Centered Modal Overlay — portalled to document.body so the backdrop
+          covers the entire page, not just the search bar's stacking context. */}
+      {chosen && createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: "rgba(0, 0, 0, 0.82)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}
+          onClick={() => setChosen(null)}
+          aria-modal="true"
+          role="dialog"
+        >
+          <div
+            className="m-auto w-full max-w-[480px] rounded-xl bg-[#000000] border border-white/20 p-6 flex flex-col shadow-2xl relative text-white"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <header className="flex items-start justify-between gap-3 mb-6">
+              <div className="min-w-0 pr-6">
+                <h2 className="text-xl font-bold tracking-tight text-white">{chosen.name}</h2>
+                <p className="mt-1 text-sm text-[#AAAAAA]">
                   {hostOf(chosen.org_id) ?? "Unknown organiser"}
                 </p>
-                <p className="text-xs text-neutral-500">{eventWhen(chosen)}</p>
+                <p className="mt-1 text-sm text-[#AAAAAA]">{eventWhen(chosen)}</p>
               </div>
               <button
                 type="button"
-                onClick={() => dialogRef.current?.close()}
+                onClick={() => setChosen(null)}
                 aria-label="Close"
-                className="-mr-1 shrink-0 rounded-full p-1.5 transition-colors duration-150 hover:bg-foreground/5"
+                className="absolute top-5 right-5 shrink-0 rounded-full p-2 text-white/60 transition-colors hover:bg-white/10 hover:text-white"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M18 6 6 18" />
                   <path d="m6 6 12 12" />
                 </svg>
               </button>
             </header>
 
-            {/* whitespace-pre-line so the paragraph breaks an organiser typed survive. */}
-            <p className="whitespace-pre-line text-sm text-neutral-500">
+            <p className="whitespace-pre-line text-[15px] text-[#CCCCCC] leading-relaxed mb-8">
               {chosen.description || "No description yet."}
             </p>
 
-            {/* Both land on the organisation running this event; ?report=1 is
-                the flag /search/[orgId] reads to open in report mode. */}
-            <div className="flex flex-row gap-2">
+            <div className="flex flex-col sm:flex-row gap-3 mt-8 border-t border-white/10 pt-6">
               <Link
                 href={`/search/${chosen.org_id}`}
-                onClick={() => dialogRef.current?.close()}
-                className="flex-1 rounded-lg bg-accent px-3 py-2 text-center text-sm font-medium text-background"
+                onClick={() => setChosen(null)}
+                className="flex-1 rounded-full bg-white px-4 py-3.5 text-center text-sm font-bold text-black transition-transform hover:scale-[1.02] active:scale-[0.98]"
               >
                 I lost something
               </Link>
               <Link
                 href={`/search/${chosen.org_id}?report=1`}
-                onClick={() => dialogRef.current?.close()}
-                className="flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-center text-sm font-medium dark:border-neutral-700"
+                onClick={() => setChosen(null)}
+                className="flex-1 rounded-full border border-white/20 bg-transparent px-4 py-3.5 text-center text-sm font-medium text-white transition-colors hover:bg-white/10"
               >
                 Report a lost item
               </Link>
             </div>
           </div>
-        )}
-      </dialog>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
