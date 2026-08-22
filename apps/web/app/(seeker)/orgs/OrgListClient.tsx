@@ -8,8 +8,7 @@ interface OrgItem {
   name: string;
   slug: string;
   type: string;
-  joinCode: string | null;
-  isJoined: boolean;
+  events: { id: string; name: string; when: string }[];
 }
 
 interface OrgListClientProps {
@@ -27,9 +26,12 @@ export default function OrgListClient({
 }: OrgListClientProps) {
   const [query, setQuery] = useState(initialQuery);
 
-  const filtered = query.trim()
-    ? orgs.filter((o) =>
-        o.name.toLowerCase().includes(query.toLowerCase())
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? orgs.filter(
+        (o) =>
+          o.name.toLowerCase().includes(q) ||
+          o.events.some((e) => e.name.toLowerCase().includes(q)),
       )
     : orgs;
 
@@ -140,6 +142,19 @@ export default function OrgListClient({
                     <path d="m9 18 6-6-6-6" />
                   </svg>
                 </Link>
+                {/* Context for the choice, not links: selecting the
+                    organisation is the action, and an event's own page belongs
+                    to the organiser who scheduled it. */}
+                {o.events.length > 0 && (
+                  <ul className="-mt-2 mb-3 ml-[3.75rem] flex flex-col gap-1 border-l border-white/10 pl-3">
+                    {o.events.map((e) => (
+                      <li key={e.id}>
+                        <span className="block truncate text-[13px] text-white/80">{e.name}</span>
+                        <span className="block text-[11px] text-[#AAAAAA]">{e.when}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </li>
             ))}
           </ul>

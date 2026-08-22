@@ -1,6 +1,17 @@
 import { db } from "@/lib/db/client";
 import { requireUser } from "@/lib/auth";
 import OrgListClient from "./OrgListClient";
+import { eventWhen } from "./[orgId]/when";
+
+type EventRow = {
+  id: string;
+  org_id: string;
+  name: string;
+  event_date: string;
+  end_date: string | null;
+  starts_at: string;
+  ends_at: string;
+};
 
 type OrgRow = {
   id: string;
@@ -45,13 +56,24 @@ export default async function OrgsPage({
   }
   const orgs = [...found.values()].sort((a, b) => a.name.localeCompare(b.name));
 
+  // Every event of every org that surfaced, not just the ones that matched.
+  const { data: shownEvents } = orgs.length
+    ? await supabase
+        .from("events")
+        .select("id,org_id,name,event_date,end_date,starts_at,ends_at")
+        .in("org_id", orgs.map((o) => o.id))
+        .order("event_date")
+    : { data: [] as EventRow[] };
+  const allEvents = (shownEvents ?? []) as EventRow[];
+
   const orgList = orgs.map((o) => ({
     id: o.id,
     name: o.name,
     slug: o.slug,
     type: o.type,
-    joinCode: null,
-    isJoined: false, // removed in main
+    events: allEvents
+      .filter((e) => e.org_id === o.id)
+      .map((e) => ({ id: e.id, name: e.name, when: eventWhen(e) })),
   }));
 
   return (

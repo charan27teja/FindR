@@ -16,7 +16,7 @@ import { mockSupabaseClient } from "./mock";
 // which makes every .insert() through this client a type error. SupabaseClient's
 // own defaults are what callers actually want.
 export function serviceDb(): SupabaseClient {
-  if (process.env.DEMO_MODE === "true") return mockSupabaseClient as any;
+  if (process.env.DEMO_MODE === "true") return mockSupabaseClient as unknown as SupabaseClient;
 
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!key) throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set");

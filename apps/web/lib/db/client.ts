@@ -1,7 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-import { serviceDb } from "./service";
 import { mockSupabaseClient } from "./mock";
 
 /**
@@ -10,7 +9,9 @@ import { mockSupabaseClient } from "./mock";
  * Use this by default. Reach for the service client only where documented.
  */
 export async function db(): Promise<ReturnType<typeof createServerClient>> {
-  if (process.env.DEMO_MODE === "true") return mockSupabaseClient as any;
+  if (process.env.DEMO_MODE === "true") {
+    return mockSupabaseClient as unknown as ReturnType<typeof createServerClient>;
+  }
   
   const store = await cookies();
   return createServerClient(

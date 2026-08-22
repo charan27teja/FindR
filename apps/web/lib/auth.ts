@@ -24,7 +24,7 @@ export async function rolesIn(orgId: string): Promise<Role[]> {
     .select("role")
     .eq("org_id", orgId)
     .eq("user_id", user.id);
-  return (data ?? []).map((r: any) => r.role as Role);
+  return ((data ?? []) as { role: Role }[]).map((r) => r.role);
 }
 
 /** Throws rather than rendering a partial page — authorisation fails closed. */

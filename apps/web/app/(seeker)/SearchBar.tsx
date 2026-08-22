@@ -126,8 +126,8 @@ export default function SearchBar({ orgs, events = [] }: { orgs: Org[]; events?:
           ) : (
             <li className="px-4 py-6 text-center text-sm text-neutral-500">
               {query.trim()
-                ? `Nothing matches "${query}". Ask the desk for their join code.`
-                : "No tenants found. Join an organisation to get started."}
+                ? `Nothing matches "${query}".`
+                : "No organisations yet."}
             </li>
           )}
         </ul>
@@ -175,27 +175,24 @@ export default function SearchBar({ orgs, events = [] }: { orgs: Org[]; events?:
               {chosen.description || "No description yet."}
             </p>
 
-            {/* ponytail: the two buttons are deliberately inert — the pages
-                behind them are being built elsewhere, and wiring hrefs now
-                would collide with that work. Give each a route when those
-                pages land. */}
+            {/* Both land on the organisation running this event; ?report=1 is
+                the flag /search/[orgId] reads to open in report mode. */}
             <div className="flex flex-row gap-2">
-              <button
-                type="button"
-                className="flex-1 rounded-lg bg-accent px-3 py-2 text-sm font-medium text-background"
+              <Link
+                href={`/search/${chosen.org_id}`}
+                onClick={() => dialogRef.current?.close()}
+                className="flex-1 rounded-lg bg-accent px-3 py-2 text-center text-sm font-medium text-background"
               >
                 I lost something
-              </button>
-              <button
-                type="button"
-                className="flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium dark:border-neutral-700"
+              </Link>
+              <Link
+                href={`/search/${chosen.org_id}?report=1`}
+                onClick={() => dialogRef.current?.close()}
+                className="flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-center text-sm font-medium dark:border-neutral-700"
               >
                 Report a lost item
-              </button>
+              </Link>
             </div>
-            <p className="-mt-2 text-center text-xs text-neutral-500">
-              These open once the item pages are ready.
-            </p>
           </div>
         )}
       </dialog>
