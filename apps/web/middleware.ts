@@ -16,13 +16,6 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  if (process.env.DEMO_MODE === "true") {
-    if (PUBLIC_PATHS.some((p) => path.startsWith(p))) {
-      return NextResponse.redirect(new URL("/", request.url));
-    }
-    return response;
-  }
-
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
