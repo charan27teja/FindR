@@ -59,8 +59,8 @@ export default function SearchBar({ orgs, events = [] }: { orgs: Org[]; events?:
 
   const PLACEHOLDERS = [
     "Search for a lost item",
-    "Try 'black wallet' or 'iPhone 13'",
-    "Search organisation",
+    "Lost your phone? Search here",
+    "Search by organisation or location",
     "Search by item name or category",
   ];
 
