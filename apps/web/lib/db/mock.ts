@@ -20,8 +20,14 @@ let mockOrgs = [
       federation_group: null,
       require_id_at_handover: false
     }
-  }
-];
+  },
+  // Public venues, mirroring supabase/seed.sql — these drive the
+  // "Popular nearby" quick links on the home page.
+  { id: "00000000-0000-0000-0000-000000000011", name: "Hyderabad Metro", slug: "hyd-metro", type: "PUBLIC", config: {} },
+  { id: "00000000-0000-0000-0000-000000000012", name: "Secunderabad Railway Station", slug: "secunderabad-rail", type: "PUBLIC", config: {} },
+  { id: "00000000-0000-0000-0000-000000000013", name: "Rajiv Gandhi International Airport", slug: "rgia", type: "PUBLIC", config: {} },
+  { id: "00000000-0000-0000-0000-000000000014", name: "MGBS Bus Terminal", slug: "mgbs", type: "PUBLIC", config: {} }
+] as any[];
 
 let mockMemberships: any[] = [];
 
@@ -103,7 +109,9 @@ export const mockSupabaseClient = {
       return new MockSupabaseQueryBuilder("orgs", mockOrgs);
     }
     if (table === "memberships") {
-      return new MockSupabaseQueryBuilder("memberships", mockMemberships);
+      // Hydrate the `orgs(...)` nested select the home page relies on.
+      const rows = mockMemberships.map((m) => ({ ...m, orgs: mockOrgs.find((o) => o.id === m.org_id) ?? null }));
+      return new MockSupabaseQueryBuilder("memberships", rows);
     }
     return new MockSupabaseQueryBuilder(table, []);
   },

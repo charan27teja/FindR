@@ -16,10 +16,10 @@ export function LoadingProvider({ children }: { children: React.ReactNode }) {
   const [isPending, startReactTransition] = useTransition();
 
   useEffect(() => {
-    // Initial mount loading splash (duration of 3500ms)
+    // Initial mount: ~1s wordmark, then the icon reel gets two turns.
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 3500);
+    }, 2900);
     return () => clearTimeout(timer);
   }, []);
 

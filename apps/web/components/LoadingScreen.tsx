@@ -11,39 +11,64 @@ const ICONS = [
   { name: 'Watch', src: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAKbj5pkDupT73vvjhWf2y4P215_7N5gEmlQaLihH9SHCrJr0tHp4s9mxC7lXP-9LN38uo6-Vd1a1-67FI_KMPTW7JJM-8fWGgaujQ4jo_RjOY3HaVGzUMkShwZwl0VIUxCLfjLRUUghi0d-P9IcFxDxaD4Ob446zummpstO7HQsGkohV-4KX3hTOnooWJeQXnOyzvQFtRN7KvfvoTkr2y4iVvCqN17L9E4mGXa5I56IynPhNwI_r2ovfINBsuxsdbx-KI' }
 ];
 
+// One tip per visit — the reel is far too quick to read a tip per icon.
+const TIPS = [
+  'Search by colour and category — no need to remember the brand.',
+  'Left it in a lecture hall? Report it, desks log new items daily.',
+  'Small things turn up more often than you would think.',
+  'Add a private detail only you would know. It speeds up verification.',
+  'Wallets and phones are always checked by staff before handover.',
+  'Report once and we notify you the moment it is handed in.'
+];
+
 export function LoadingScreen({ isLoading = true }: { isLoading?: boolean }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [transitionState, setTransitionState] = useState<'active' | 'exit'>('active');
   const [visible, setVisible] = useState(true);
+  const [phase, setPhase] = useState<'logo' | 'icons'>('logo');
+  const [order, setOrder] = useState(() => ICONS.map((_, i) => i));
+  const [tip, setTip] = useState(TIPS[0]);
+
+  // Randomised after mount, never during render — a random order on the
+  // server would not match the client and would break hydration.
+  useEffect(() => {
+    if (!isLoading) return;
+    setOrder((prev) => [...prev].sort(() => Math.random() - 0.5));
+    setTip(TIPS[Math.floor(Math.random() * TIPS.length)]);
+  }, [isLoading]);
+
+  // The wordmark plays once per page load. This component stays mounted for
+  // the session, so later route transitions open straight on the icon reel.
+  useEffect(() => {
+    const timer = setTimeout(() => setPhase('icons'), 1000);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (prefersReducedMotion) {
-      if (!isLoading) {
-        setVisible(false);
-      }
+    if (isLoading) {
+      setVisible(true);
       return;
     }
+    const timer = setTimeout(() => setVisible(false), 250);
+    return () => clearTimeout(timer);
+  }, [isLoading]);
 
-    if (!isLoading) {
-      const timer = setTimeout(() => setVisible(false), 300);
-      return () => clearTimeout(timer);
-    }
-
-    setVisible(true);
+  useEffect(() => {
+    if (phase !== 'icons' || !isLoading) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
     const interval = setInterval(() => {
       setTransitionState('exit');
-      
+
       setTimeout(() => {
         setCurrentIndex((prev) => (prev + 1) % ICONS.length);
         setTransitionState('active');
-      }, 200); // 200ms transition time
-      
-    }, 1500); // 1.5s cycle duration
+      }, 110); // 110ms transition time
+
+    }, 460); // 0.46s cycle — four icons inside the ~1.9s reel
 
     return () => clearInterval(interval);
-  }, [isLoading]);
+  }, [isLoading, phase]);
 
   if (!visible) return null;
 
@@ -57,37 +82,50 @@ export function LoadingScreen({ isLoading = true }: { isLoading?: boolean }) {
       <div className="absolute inset-0 bg-white pointer-events-none animate-flash z-10" />
 
       <main className="relative flex flex-col items-center justify-center w-full h-full">
-        {/* Icon Container */}
-        <div className="relative w-[120px] h-[120px] flex justify-center items-center">
-          {ICONS.map((icon, idx) => {
-            const isActive = idx === currentIndex && transitionState === 'active';
-            const isExiting = idx === currentIndex && transitionState === 'exit';
+        {phase === 'logo' ? (
+          /* Logo screen — the name alone, then it clears for the reel. */
+          <h1 className="logo-mark text-[clamp(2rem,12vw,3.25rem)] font-semibold tracking-[0.12em] text-white">
+            Findr
+          </h1>
+        ) : (
+          <div className="rise flex flex-col items-center">
+            {/* Icon Container */}
+            <div className="relative w-[120px] h-[120px] flex justify-center items-center">
+              {ICONS.map((icon, idx) => {
+                const shown = order[currentIndex];
+                const isActive = idx === shown && transitionState === 'active';
+                const isExiting = idx === shown && transitionState === 'exit';
 
-            return (
-              <div
-                key={icon.name}
-                className={`absolute w-full h-full transition-all duration-200 ease-out pointer-events-none ${
-                  isActive
-                    ? 'opacity-100 scale-100'
-                    : isExiting
-                    ? 'opacity-0 scale-[0.95]'
-                    : 'opacity-0 scale-[0.9]'
-                }`}
-              >
-                <img
-                  src={icon.src}
-                  alt={`${icon.name} Icon`}
-                  className="w-full h-full object-contain brightness-0 invert"
-                />
-              </div>
-            );
-          })}
-        </div>
+                return (
+                  <div
+                    key={icon.name}
+                    className={`absolute w-full h-full transition-all duration-100 ease-out pointer-events-none ${
+                      isActive
+                        ? 'opacity-100 scale-100'
+                        : isExiting
+                        ? 'opacity-0 scale-[0.95]'
+                        : 'opacity-0 scale-[0.9]'
+                    }`}
+                  >
+                    <img
+                      src={icon.src}
+                      alt={`${icon.name} Icon`}
+                      className="w-full h-full object-contain brightness-0 invert"
+                    />
+                  </div>
+                );
+              })}
+            </div>
 
-        {/* Brand Text */}
-        <h1 className="absolute top-[calc(50%+80px)] text-[22px] font-medium tracking-[0.12em] text-white">
-          Findr
-        </h1>
+            {/* Tip — keyed so it replays its entrance when it changes. */}
+            <p
+              key={tip}
+              className="rise mt-10 max-w-xs px-6 text-center text-sm leading-relaxed text-white/60"
+            >
+              {tip}
+            </p>
+          </div>
+        )}
       </main>
     </div>
   );
