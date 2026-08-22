@@ -72,7 +72,7 @@ const RESPONSE_SCHEMA = {
   propertyOrdering: ["public", "private", "safe_crop_box"],
 };
 
-/** DEMO_MODE replays by image hash, so dead venue wifi is not a dead demo. */
+/** Keyed by image hash, so re-reading the same photo costs nothing. */
 export function cacheKey(imageB64: string, model = MODEL): string {
   // Model is part of the key: without it, switching GEMINI_MODEL silently
   // replays the previous model's answer and you tune against a ghost.
@@ -140,7 +140,6 @@ export async function extractVision(
   const key = cacheKey(imageB64, MODEL);
   const cached = await readCache(key);
   if (cached) return cached;
-  if (process.env.DEMO_MODE === "true") return null;
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
@@ -252,7 +251,6 @@ export async function extractFoundItem(
   const key = cacheKey(imageB64, `${MODEL}:found-item`);
   const cached = await readFoundCache(key);
   if (cached) return cached;
-  if (process.env.DEMO_MODE === "true") return null;
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;

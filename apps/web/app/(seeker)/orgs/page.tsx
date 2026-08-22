@@ -41,7 +41,7 @@ export default async function OrgsPage({
       : Promise.resolve({ data: [] as { id: string; org_id: string }[] }),
   ]);
 
-  // The demo mock client is untyped, so pin the shape once here.
+  // The Supabase client is untyped here, so pin the shape once.
   const found = new Map<string, OrgRow>();
   for (const o of (orgsByName ?? []) as OrgRow[]) found.set(o.id, o);
 

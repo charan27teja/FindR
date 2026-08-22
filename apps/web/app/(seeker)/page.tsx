@@ -44,7 +44,7 @@ export default async function Home() {
       .limit(200),
   ]);
 
-  // The demo mock client is untyped, so pin the shape once here.
+  // The Supabase client is untyped here, so pin the shape once.
   const orgList = (orgs ?? []) as Org[];
   const eventList = (events ?? []) as EventLite[];
 
