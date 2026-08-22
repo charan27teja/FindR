@@ -134,7 +134,6 @@ export default async function Home() {
             </span>
           </Link>
         </div>
-
         {/* Workspaces this user actually belongs to */}
         <section>
           <h2

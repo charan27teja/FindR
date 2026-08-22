@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { db } from "@/lib/db/client";
 
 export type LoginState = { email?: string; error?: string; sent?: boolean };
@@ -32,13 +33,23 @@ export async function sendOtp(_prev: LoginState, form: FormData): Promise<LoginS
   return { email, sent: true };
 }
 
-export async function verifyOtp(_prev: LoginState, form: FormData): Promise<LoginState> {
-  const email = String(form.get("email") ?? "");
-  const token = String(form.get("token") ?? "").trim();
-  const next = String(form.get("next") ?? "/") || "/";
-
+export async function signInWithGoogle(next: string = "/") {
   const supabase = await db();
-  const { error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
-  if (error) return { email, sent: true, error: "That code did not work. Check it and try again." };
-  redirect(next);
+  const headersList = await headers();
+  const origin = headersList.get("origin") ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
+    },
+  });
+
+  if (data?.url) {
+    redirect(data.url);
+  }
+
+  if (error) {
+    throw new Error(error.message);
+  }
 }
