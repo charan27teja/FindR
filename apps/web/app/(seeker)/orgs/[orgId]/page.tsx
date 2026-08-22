@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatInr } from "@findr/shared";
 import { db } from "@/lib/db/client";
-import { rolesIn } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import EventForm from "./EventForm";
 import { deleteEvent } from "./actions";
 import { eventWhen } from "./when";
@@ -24,15 +24,18 @@ export default async function OrgPage({ params }: { params: Promise<{ orgId: str
   const supabase = await db();
   const { data: org } = await supabase
     .from("orgs")
-    .select("id,name,slug,type,location,join_code")
+    .select("id,name,slug,type,location")
     .eq("id", orgId)
     .single();
   if (!org) notFound();
 
-  const roles = await rolesIn(orgId);
-  const isAdmin = roles.includes("ORG_ADMIN");
+  // This is the organiser's console, not a public profile. Nobody joins an
+  // organisation any more, so the only people with a role here are the ones
+  // who created it — everyone else is sent home rather than shown a stripped
+  // version of a page that is entirely management.
+  await requireRole(orgId, ["ORG_ADMIN"]);
 
-  const { data: events } = await supabase
+  const { data: events, error: eventsError } = await supabase
     .from("events")
     .select("id,name,event_date,end_date,starts_at,ends_at,capacity,price_inr")
     .eq("org_id", orgId)
@@ -59,16 +62,6 @@ export default async function OrgPage({ params }: { params: Promise<{ orgId: str
         </div>
       </header>
 
-      {isAdmin && org.join_code ? (
-        <p className="rise mb-6 rounded-xl border border-neutral-200 px-4 py-3 text-sm dark:border-neutral-800" style={{ animationDelay: "60ms" }}>
-          <span className="text-neutral-500">Join code </span>
-          <span className="font-mono font-medium tracking-widest">{org.join_code as string}</span>
-          <span className="mt-1 block text-xs text-neutral-500">
-            Give this to staff and students so they can join.
-          </span>
-        </p>
-      ) : null}
-
       <section className="rise" style={{ animationDelay: "120ms" }}>
         <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-neutral-500">Events</h2>
         {eventList.length > 0 ? (
@@ -76,7 +69,7 @@ export default async function OrgPage({ params }: { params: Promise<{ orgId: str
             {eventList.map((e) => (
               <li
                 key={e.id}
-                className="flex items-center justify-between gap-3 rounded-xl border border-neutral-200 px-4 py-3 dark:border-neutral-800"
+                className="flex items-center justify-between gap-3 rounded-xl border border-neutral-200 px-4 py-3 transition-colors duration-150 hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-900"
               >
                 <Link href={`/orgs/${orgId}/events/${e.id}`} className="min-w-0 flex-1">
                   <span className="block truncate font-medium">{e.name}</span>
@@ -85,26 +78,28 @@ export default async function OrgPage({ params }: { params: Promise<{ orgId: str
                   </span>
                 </Link>
                 <span className="shrink-0 font-mono text-sm tabular-nums">{formatInr(e.price_inr)}</span>
-                {isAdmin ? (
-                  <form action={deleteEvent} className="shrink-0">
-                    <input type="hidden" name="org_id" value={orgId} />
-                    <input type="hidden" name="event_id" value={e.id} />
-                    <button
-                      type="submit"
-                      aria-label={`Remove ${e.name}`}
-                      className="rounded-full p-1.5 text-neutral-400 transition-colors duration-150 hover:bg-neutral-100 hover:text-red-600 dark:hover:bg-neutral-800"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M3 6h18" />
-                        <path d="M8 6V4h8v2" />
-                        <path d="M19 6l-1 14H6L5 6" />
-                      </svg>
-                    </button>
-                  </form>
-                ) : null}
+                <form action={deleteEvent} className="shrink-0">
+                  <input type="hidden" name="org_id" value={orgId} />
+                  <input type="hidden" name="event_id" value={e.id} />
+                  <button
+                    type="submit"
+                    aria-label={`Remove ${e.name}`}
+                    className="rounded-full p-1.5 text-neutral-400 transition-colors duration-150 hover:bg-neutral-100 hover:text-red-600 dark:hover:bg-neutral-800"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 6h18" />
+                      <path d="M8 6V4h8v2" />
+                      <path d="M19 6l-1 14H6L5 6" />
+                    </svg>
+                  </button>
+                </form>
               </li>
             ))}
           </ul>
+        ) : eventsError ? (
+          <p role="alert" className="rounded-xl border border-red-500/40 px-4 py-3 text-sm text-red-600 dark:text-red-400">
+            Could not load events: {eventsError.message}
+          </p>
         ) : (
           <p className="rounded-xl border border-dashed border-neutral-300 px-4 py-6 text-center text-sm text-neutral-500 dark:border-neutral-700">
             No events yet.
@@ -112,12 +107,10 @@ export default async function OrgPage({ params }: { params: Promise<{ orgId: str
         )}
       </section>
 
-      {isAdmin ? (
-        <section className="rise mt-8" style={{ animationDelay: "180ms" }}>
-          <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-neutral-500">New event</h2>
-          <EventForm orgId={orgId} />
-        </section>
-      ) : null}
+      <section className="rise mt-8" style={{ animationDelay: "180ms" }}>
+        <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-neutral-500">New event</h2>
+        <EventForm orgId={orgId} />
+      </section>
     </main>
   );
 }

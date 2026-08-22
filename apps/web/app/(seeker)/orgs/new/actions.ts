@@ -32,9 +32,9 @@ export async function createOrg(_prev: OrgFormState, form: FormData): Promise<Or
   }
   const { name, location, contacts: people } = parsed.data;
 
-  // Service role: `orgs_create` would let the user insert the org, but
-  // `memberships_self_join` only permits self-granting SEEKER — the creator
-  // could not make themselves ORG_ADMIN, so the org would be unmanageable.
+  // Service role: `orgs_create` would let the user insert the org, but no
+  // policy lets anyone write their own membership — the creator could not make
+  // themselves ORG_ADMIN, so the org would be unmanageable.
   const admin = serviceDb();
 
   // memberships.user_id and events.created_by both point at profiles; a user

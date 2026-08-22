@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatInr } from "@findr/shared";
 import { db } from "@/lib/db/client";
-import { rolesIn } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import EventForm, { type EventDraft } from "../../EventForm";
 import { eventWhen } from "../../when";
 
@@ -14,7 +14,7 @@ export default async function EventPage({
   const { orgId, eventId } = await params;
 
   const supabase = await db();
-  const [{ data: event }, { data: org }] = await Promise.all([
+  const [{ data: event, error: eventError }, { data: org }] = await Promise.all([
     supabase
       .from("events")
       .select("id,name,description,event_date,end_date,starts_at,ends_at,capacity,price_inr")
@@ -23,9 +23,26 @@ export default async function EventPage({
       .single(),
     supabase.from("orgs").select("id,name").eq("id", orgId).single(),
   ]);
+  // PGRST116 is "no rows matched" — a real 404. Anything else means the query
+  // itself failed, most often a column that an unapplied migration was meant to
+  // add. Reporting that as "not found" sends you hunting for a missing event
+  // instead of a missing migration.
+  if (eventError && eventError.code !== "PGRST116") {
+    return (
+      <main className="mx-auto flex min-h-dvh w-full max-w-lg flex-col gap-4 px-6 py-10">
+        <Link href={`/orgs/${orgId}`} className="text-sm text-neutral-500">
+          ← Back
+        </Link>
+        <p role="alert" className="rounded-xl border border-red-500/40 px-4 py-3 text-sm text-red-600 dark:text-red-400">
+          Could not load this event: {eventError.message}
+        </p>
+      </main>
+    );
+  }
   if (!event || !org) notFound();
 
-  const isAdmin = (await rolesIn(orgId)).includes("ORG_ADMIN");
+  // Reached only from the organisation console, which is already admin-only.
+  await requireRole(orgId, ["ORG_ADMIN"]);
   const e = event as EventDraft & { price_inr: number };
 
   return (
@@ -69,17 +86,15 @@ export default async function EventPage({
         </section>
       ) : null}
 
-      {isAdmin ? (
-        <section className="rise" style={{ animationDelay: "180ms" }}>
-          <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-neutral-500">
-            Edit event
-          </h2>
-          <p className="mb-4 text-xs text-neutral-500">
-            Raising the item capacity buys more room for this event and reprices it.
-          </p>
-          <EventForm orgId={orgId} event={e} />
-        </section>
-      ) : null}
+      <section className="rise" style={{ animationDelay: "180ms" }}>
+        <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-neutral-500">
+          Edit event
+        </h2>
+        <p className="mb-4 text-xs text-neutral-500">
+          Raising the item capacity buys more room for this event and reprices it.
+        </p>
+        <EventForm orgId={orgId} event={e} />
+      </section>
     </main>
   );
 }
