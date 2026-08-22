@@ -35,3 +35,41 @@ export async function updateProfile(formData: FormData) {
 
   revalidatePath("/profile");
 }
+
+export async function uploadAvatar(formData: FormData): Promise<string> {
+  const supabase = await db();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const file = formData.get("avatar") as File;
+  if (!file || file.size === 0) throw new Error("No file provided");
+
+  const ext = file.name.split(".").pop() || "jpg";
+  const filePath = `avatars/${user.id}.${ext}`;
+
+  // Upload to Supabase Storage (upsert to overwrite previous avatar)
+  const { error: uploadError } = await supabase.storage
+    .from("avatars")
+    .upload(filePath, file, { upsert: true });
+
+  if (uploadError) {
+    // If the bucket doesn't exist yet, save the avatar as a data URL in user metadata instead
+    const bytes = await file.arrayBuffer();
+    const base64 = Buffer.from(bytes).toString("base64");
+    const dataUrl = `data:${file.type};base64,${base64}`;
+
+    await supabase.auth.updateUser({ data: { avatar_url: dataUrl } });
+    revalidatePath("/profile");
+    return dataUrl;
+  }
+
+  const { data: publicUrlData } = supabase.storage
+    .from("avatars")
+    .getPublicUrl(filePath);
+
+  const avatarUrl = publicUrlData.publicUrl;
+
+  await supabase.auth.updateUser({ data: { avatar_url: avatarUrl } });
+  revalidatePath("/profile");
+  return avatarUrl;
+}
