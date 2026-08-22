@@ -38,19 +38,19 @@ export default async function OrgsPage({
           name="q"
           defaultValue={q}
           placeholder="Search stations, campuses, events"
-          className="w-full rounded-lg border border-neutral-300 bg-transparent px-4 py-3 outline-none focus:border-neutral-900 dark:border-neutral-700 dark:focus:border-neutral-100"
+          className="w-full rounded-lg border border-foreground/20 bg-transparent px-4 py-3 outline-none focus:border-foreground"
         />
         <input type="hidden" name="intent" value={intent} />
       </form>
-
+ 
       {error && <p className="text-sm text-accent">{error}</p>}
-
+ 
       {orgs?.length ? (
         <ul className="flex flex-col gap-2">
           {orgs.map((o: any) => (
             <li
               key={o.id}
-              className="rounded-lg border border-neutral-200 px-4 py-3 dark:border-neutral-800"
+              className="rounded-lg border border-foreground/10 px-4 py-3"
             >
               <div className="flex items-baseline justify-between gap-3">
                 <span className="font-medium">{o.name}</span>
@@ -65,7 +65,7 @@ export default async function OrgsPage({
                   <input
                     name="join_code"
                     placeholder="Join code"
-                    className="min-w-0 flex-1 rounded border border-neutral-300 bg-transparent px-3 py-2 text-sm dark:border-neutral-700"
+                    className="min-w-0 flex-1 rounded border border-foreground/20 bg-transparent px-3 py-2 text-sm focus:border-foreground"
                   />
                 )}
                 <button className="ml-auto rounded bg-accent px-4 py-2 text-sm text-background">
@@ -76,7 +76,7 @@ export default async function OrgsPage({
           ))}
         </ul>
       ) : (
-        <p className="rounded-lg border border-dashed border-neutral-300 px-4 py-8 text-center text-sm text-neutral-500 dark:border-neutral-700">
+        <p className="rounded-lg border border-dashed border-foreground/20 px-4 py-8 text-center text-sm text-neutral-500">
           Nothing here yet. Organisations appear once their lost-and-found desk signs up.
         </p>
       )}

@@ -142,3 +142,45 @@ button:disabled {
   .cta-icon { transition: none; }
   .cta-card:hover .cta-icon { transform: none; }
 }
+
+/* Hide popular section when search is active (focused) */
+.search-container:focus-within ~ .content-container .popular-section {
+  display: none;
+}
+
+/* Custom scrollbar for search dropdown */
+.search-dropdown {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
+.search-dropdown::-webkit-scrollbar {
+  width: 6px;
+}
+
+.search-dropdown::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.search-dropdown::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 9999px;
+}
+
+.search-dropdown::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.35);
+}
+
+@media (prefers-color-scheme: dark) {
+  .search-dropdown {
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  }
+  .search-dropdown::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+  .search-dropdown::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.35);
+  }
+}
+
+
