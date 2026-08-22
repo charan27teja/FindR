@@ -27,8 +27,8 @@ export default function NewOrgPage() {
       </header>
 
       <p className="rise mb-6 text-sm leading-relaxed text-neutral-500" style={{ animationDelay: "60ms" }}>
-        You will be its admin. Anyone you give the join code to can report and
-        claim items at its desks.
+        You will be its admin, and the only one who can manage it. Anyone
+        searching can select it to report or claim items at its desks.
       </p>
 
       <form action={action} className="flex flex-col gap-6">

@@ -1,6 +1,13 @@
 import type { User } from "@supabase/supabase-js";
 
-let mockOrgs = [
+/**
+ * A row in the demo store. Deliberately a loose bag rather than a per-table
+ * type: this client stands in for PostgREST across every table, and the pages
+ * that read it already cast to the shape they expect.
+ */
+type Row = Record<string, unknown>;
+
+const mockOrgs: Row[] = [
   {
     id: "00000000-0000-0000-0000-000000000001",
     name: "Sreenidhi Institute of Science and Technology",
@@ -27,15 +34,15 @@ let mockOrgs = [
   { id: "00000000-0000-0000-0000-000000000012", name: "Secunderabad Railway Station", slug: "secunderabad-rail", type: "PUBLIC", config: {} },
   { id: "00000000-0000-0000-0000-000000000013", name: "Rajiv Gandhi International Airport", slug: "rgia", type: "PUBLIC", config: {} },
   { id: "00000000-0000-0000-0000-000000000014", name: "MGBS Bus Terminal", slug: "mgbs", type: "PUBLIC", config: {} }
-] as any[];
+];
 
-let mockMemberships: any[] = [];
+const mockMemberships: Row[] = [];
 
 class MockSupabaseQueryBuilder {
   private table: string;
-  private data: any[];
+  private data: Row[];
 
-  constructor(table: string, data: any[]) {
+  constructor(table: string, data: Row[]) {
     this.table = table;
     this.data = [...data];
   }
@@ -53,12 +60,17 @@ class MockSupabaseQueryBuilder {
     return this;
   }
 
-  eq(column: string, value: any) {
+  eq(column: string, value: unknown) {
     this.data = this.data.filter(item => item[column] === value);
     return this;
   }
 
-  order(column: string, options?: any) {
+  in(column: string, values: readonly unknown[]) {
+    this.data = this.data.filter(item => values.includes(item[column]));
+    return this;
+  }
+
+  order(column: string, options?: { ascending?: boolean }) {
     this.data.sort((a, b) => {
       const valA = a[column];
       const valB = b[column];
@@ -79,12 +91,12 @@ class MockSupabaseQueryBuilder {
     return { data: this.data[0] || null, error: this.data[0] ? null : { message: "Not found", code: "PGRST116" } };
   }
 
-  async insert(row: any) {
+  async insert(row: Row) {
     if (this.table === "memberships") {
       mockMemberships.push(row);
     } else if (this.table === "orgs") {
-      row.id = row.id || "mock-id-" + Math.random().toString(36).substr(2, 9);
-      row.created_at = row.created_at || new Date().toISOString();
+      row.id = row.id ?? "mock-id-" + Math.random().toString(36).slice(2, 11);
+      row.created_at = row.created_at ?? new Date().toISOString();
       mockOrgs.push(row);
     }
     return { data: row, error: null };
@@ -97,11 +109,11 @@ class MockSupabaseQueryBuilder {
     return this;
   }
 
-  update(row: any) {
+  update(row: Row) {
     return this;
   }
 
-  then(onfulfilled?: (value: { data: any[] | null; error: any }) => any) {
+  then(onfulfilled?: (value: { data: Row[] | null; error: null }) => unknown) {
     const promise = Promise.resolve({ data: this.data, error: null });
     return promise.then(onfulfilled);
   }
@@ -112,10 +124,10 @@ export const mockSupabaseClient = {
     async getUser() {
       return { data: { user: { id: "00000000-0000-0000-0000-000000000000", email: "dummy@example.com" } as User }, error: null };
     },
-    async signInWithOtp(args: any) {
+    async signInWithOtp(args: unknown) {
       return { data: {}, error: null };
     },
-    async verifyOtp(args: any) {
+    async verifyOtp(args: unknown) {
       return { data: {}, error: null };
     }
   },
