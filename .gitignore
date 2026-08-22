@@ -17,3 +17,6 @@ apps/ai/.cache/
 # supabase
 supabase/.temp/
 supabase/.branches/
+
+# vision response cache (DEMO_MODE replay)
+apps/web/.cache/
