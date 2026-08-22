@@ -131,7 +131,7 @@ export default function ReportItemClient({
   /* ── Success: report filed, show matches ─────────────────────────── */
   if (state.reported) {
     return (
-      <div className="min-h-dvh bg-black text-white flex flex-col max-w-md mx-auto">
+      <div className="rise-stagger min-h-dvh bg-black text-white flex flex-col max-w-md mx-auto">
         <header className="flex-shrink-0 px-6 pt-10 pb-4">
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-full border border-green-500/30">
@@ -181,7 +181,7 @@ export default function ReportItemClient({
 
   /* ── Main wizard ─────────────────────────────────────────────────── */
   return (
-    <div className="min-h-dvh bg-black text-white flex flex-col max-w-md mx-auto">
+    <div className="rise-stagger min-h-dvh bg-black text-white flex flex-col max-w-md mx-auto">
       <header className="flex-shrink-0 px-6 pt-10 pb-4">
         <div className="flex items-start gap-3">
           <Link

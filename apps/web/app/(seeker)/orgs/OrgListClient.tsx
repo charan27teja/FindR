@@ -120,7 +120,7 @@ export default function OrgListClient({
   );
 
   return (
-    <div className="min-h-dvh bg-black text-white flex flex-col max-w-md mx-auto">
+    <div className="rise-stagger min-h-dvh bg-black text-white flex flex-col max-w-md mx-auto">
       {/* Fixed top header */}
       <div className="sticky top-0 z-10 bg-black px-6 pt-8 pb-4">
         {/* Back button & title */}

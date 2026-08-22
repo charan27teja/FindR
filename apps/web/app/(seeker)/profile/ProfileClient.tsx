@@ -90,7 +90,7 @@ export default function ProfileClient({ initialData }: ProfileClientProps) {
     : formData.firstName || "User";
 
   return (
-    <div className="min-h-dvh bg-black text-white flex flex-col justify-between max-w-md mx-auto px-6 py-8">
+    <div className="rise-stagger min-h-dvh bg-black text-white flex flex-col justify-between max-w-md mx-auto px-6 py-8">
       {/* Top Header & Navigation */}
       <div>
         <div className="flex items-center justify-between pb-6">

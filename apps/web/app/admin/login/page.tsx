@@ -9,7 +9,7 @@ export default function AdminLoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-black p-4">
-      <div className="max-w-md w-full space-y-8 bg-white dark:bg-[#111] p-8 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
+      <div className="rise max-w-md w-full space-y-8 bg-white dark:bg-[#111] p-8 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
         <div>
           <h2 className="text-center text-3xl font-semibold tracking-tight text-gray-900 dark:text-white">
             Admin Login

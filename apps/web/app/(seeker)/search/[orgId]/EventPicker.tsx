@@ -45,7 +45,7 @@ export default function EventPicker({
   }, [selectedEvent]);
 
   return (
-    <div className="min-h-dvh bg-black text-white flex flex-col max-w-md mx-auto relative">
+    <div className="rise-stagger min-h-dvh bg-black text-white flex flex-col max-w-md mx-auto relative">
       <header className="sticky top-0 z-10 bg-black px-6 pt-8 pb-4">
         <div className="flex items-center gap-3">
           <Link

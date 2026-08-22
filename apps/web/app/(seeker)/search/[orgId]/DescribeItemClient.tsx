@@ -76,7 +76,7 @@ export default function DescribeItemClient({
   };
 
   return (
-    <div className="fixed inset-0 bg-black text-white flex flex-col max-w-md mx-auto">
+    <div className="rise-stagger fixed inset-0 bg-black text-white flex flex-col max-w-md mx-auto">
       {/* Top header — event name or org name */}
       <header className="flex-shrink-0 px-6 pt-10 pb-4">
         <div className="flex items-start gap-3">

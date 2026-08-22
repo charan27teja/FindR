@@ -50,7 +50,7 @@ export default async function ClaimsPage() {
   const typedClaims = (claims || []) as unknown as ClaimRecord[];
 
   return (
-    <div className="min-h-dvh bg-black text-white max-w-md mx-auto px-6 py-8">
+    <div className="rise-stagger min-h-dvh bg-black text-white max-w-md mx-auto px-6 py-8">
       <div className="flex items-center pb-8 gap-4">
         <Link
           href="/profile"

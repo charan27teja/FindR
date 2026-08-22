@@ -335,6 +335,29 @@ button:disabled {
   animation: modal-in 0.16s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* Page entrance. `.rise` animates one element; this staggers a container's
+   direct children so a screen can cascade in with a single class, instead of
+   a hand-written animation-delay on every section the way the home page does.
+   Past the eighth child the delay stops growing — by then the rest is below
+   the fold and a longer wait just feels slow. */
+.rise-stagger > * {
+  animation: rise-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 260ms;
+}
+.rise-stagger > *:nth-child(1) { animation-delay: 0ms; }
+.rise-stagger > *:nth-child(2) { animation-delay: 55ms; }
+.rise-stagger > *:nth-child(3) { animation-delay: 110ms; }
+.rise-stagger > *:nth-child(4) { animation-delay: 160ms; }
+.rise-stagger > *:nth-child(5) { animation-delay: 200ms; }
+.rise-stagger > *:nth-child(6) { animation-delay: 230ms; }
+
+/* Has to sit after the rules above, not with the other reduced-motion
+   overrides higher up: a media query adds no specificity, so whichever rule
+   comes last wins. */
+@media (prefers-reduced-motion: reduce) {
+  .rise-stagger > * { animation: none; }
+}
+
 /* Keycap, for the hint in the drawer footer. */
 .kbd {
   border: 1px solid rgba(0, 0, 0, 0.2);

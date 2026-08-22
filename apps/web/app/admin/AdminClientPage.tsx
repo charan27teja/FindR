@@ -111,7 +111,7 @@ export function AdminClientPage({
   };
 
   return (
-    <div className="space-y-8">
+    <div className="rise-stagger space-y-8">
       <div>
         <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Public Organisations</h1>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">

@@ -83,7 +83,7 @@ export default async function ItemPage({
   ];
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-black text-white">
+    <div className="rise-stagger mx-auto flex min-h-dvh max-w-md flex-col bg-black text-white">
       <header className="flex-shrink-0 px-6 pb-4 pt-10">
         <div className="flex items-start gap-3">
           <a

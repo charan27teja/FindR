@@ -39,7 +39,7 @@ export default function HandInNoticeClient({
 
   if (state.sent) {
     return (
-      <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-4 bg-black px-8 text-center text-white">
+      <div className="rise-stagger mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-4 bg-black px-8 text-center text-white">
         <div className="flex h-16 w-16 items-center justify-center rounded-full border border-white/20">
           <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M20 6 9 17l-5-5" />
@@ -59,7 +59,7 @@ export default function HandInNoticeClient({
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-black text-white">
+    <div className="rise-stagger mx-auto flex min-h-dvh max-w-md flex-col bg-black text-white">
       <header className="flex-shrink-0 px-6 pb-4 pt-10">
         <div className="flex items-start gap-3">
           <Link
