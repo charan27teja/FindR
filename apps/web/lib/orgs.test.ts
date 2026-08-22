@@ -9,12 +9,12 @@ import {
   slugify,
 } from "@findr/shared";
 
-test("price is base fee plus per-head", () => {
-  assert.equal(eventPrice(100), 1500);
-  assert.equal(eventPrice(500), 5500);
-  assert.equal(eventPrice(1), EVENT_BASE_FEE_INR + 10);
+test("price is base fee plus per-item slot", () => {
+  assert.equal(eventPrice(100), 149);
+  assert.equal(eventPrice(500), 549);
+  assert.equal(eventPrice(1), EVENT_BASE_FEE_INR + 1);
   // No capacity means no event, so no base fee either — otherwise an empty
-  // form shows ₹500 before anything has been typed.
+  // form shows the base fee before anything has been typed.
   assert.equal(eventPrice(0), 0);
   assert.equal(eventPrice(-5), 0);
   assert.equal(eventPrice(Number.NaN), 0);
@@ -54,6 +54,37 @@ test("an event must end after it starts", () => {
   assert.equal(parsed.data.capacity, 250, "capacity coerces from the form string");
   assert.ok(!NewEvent.safeParse({ ...ok, ends_at: "08:00" }).success, "ends before it starts");
   assert.ok(!NewEvent.safeParse({ ...ok, capacity: "0" }).success, "zero capacity");
+  assert.equal(parsed.data.end_date, ok.event_date, "a blank end date means one day");
+  assert.equal(parsed.data.description, null, "a blank description is stored as null, not \"\"");
+  assert.equal(
+    NewEvent.safeParse({ ...ok, description: "  Desk is by gate 3.  " }).data?.description,
+    "Desk is by gate 3.",
+    "a description is trimmed",
+  );
+});
+
+test("an event can span more than one day", () => {
+  const ok = {
+    name: "Techfusion",
+    event_date: "2026-09-01",
+    end_date: "2026-09-03",
+    starts_at: "09:00",
+    ends_at: "17:00",
+    capacity: "250",
+  };
+  const parsed = NewEvent.safeParse(ok);
+  assert.ok(parsed.success);
+  assert.equal(parsed.data.end_date, "2026-09-03");
+
+  // Overnight: only legal because it ends on a later day.
+  assert.ok(
+    NewEvent.safeParse({ ...ok, end_date: "2026-09-02", starts_at: "22:00", ends_at: "02:00" }).success,
+    "an overnight span is allowed",
+  );
+  assert.ok(
+    !NewEvent.safeParse({ ...ok, end_date: "2026-08-30" }).success,
+    "cannot end before the day it starts",
+  );
 });
 
 test("slug is url-safe and never empty", () => {

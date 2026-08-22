@@ -86,16 +86,20 @@ export const PRIVATE_ITEM_FIELDS = [
 
 // --- Organisations & events ------------------------------------------------
 /**
- * Event pricing. The single source of truth: the create form previews it live,
- * the server action recomputes it on submit, and `events.price_inr` stores the
- * result. Retune these two numbers and everything follows.
+ * Event pricing. Capacity is storage the organiser reserves, not a headcount:
+ * one lost item logged during the event fills one slot, so the organiser buys
+ * as much room as they think the desk will need.
+ *
+ * The single source of truth: the create form previews it live, the server
+ * action recomputes it on submit, and `events.price_inr` stores the result.
+ * Retune these two numbers and everything follows.
  */
-export const EVENT_BASE_FEE_INR = 500;
-export const EVENT_PER_HEAD_INR = 10;
+export const EVENT_BASE_FEE_INR = 49;
+export const EVENT_PER_ITEM_INR = 1;
 
 export function eventPrice(capacity: number): number {
   if (!Number.isFinite(capacity) || capacity <= 0) return 0;
-  return EVENT_BASE_FEE_INR + Math.floor(capacity) * EVENT_PER_HEAD_INR;
+  return EVENT_BASE_FEE_INR + Math.floor(capacity) * EVENT_PER_ITEM_INR;
 }
 
 export const formatInr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
@@ -138,12 +142,26 @@ export type NewOrg = z.infer<typeof NewOrg>;
 export const NewEvent = z
   .object({
     name: trimmed.min(2, "Name the event.").max(120),
+    description: z.preprocess(blankToNull, trimmed.max(2000, "Keep the description under 2000 characters.").nullish()),
     event_date: trimmed.regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a date."),
+    end_date: z.preprocess(
+      blankToNull,
+      trimmed.regex(/^\d{4}-\d{2}-\d{2}$/, "Pick an end date.").nullish(),
+    ),
     starts_at: trimmed.regex(/^\d{2}:\d{2}/, "Pick a start time."),
     ends_at: trimmed.regex(/^\d{2}:\d{2}/, "Pick an end time."),
-    capacity: z.coerce.number().int().positive("Capacity must be at least 1.").max(1_000_000),
+    capacity: z.coerce.number().int().positive("Reserve room for at least 1 item.").max(1_000_000),
   })
-  .refine((e) => e.ends_at > e.starts_at, {
+  // Leaving the end date blank is how you say "it is a one-day event", so fill
+  // it in here and everything downstream can treat every event as a span.
+  .transform((e) => ({ ...e, end_date: e.end_date ?? e.event_date, description: e.description ?? null }))
+  .refine((e) => e.end_date >= e.event_date, {
+    message: "The event cannot end before the day it starts.",
+    path: ["end_date"],
+  })
+  // ISO dates and HH:MM times both sort lexically, so a plain > is the
+  // comparison — no Date parsing, no timezone to get wrong.
+  .refine((e) => e.end_date > e.event_date || e.ends_at > e.starts_at, {
     message: "The event must end after it starts.",
     path: ["ends_at"],
   });

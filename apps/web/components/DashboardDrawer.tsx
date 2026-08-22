@@ -79,6 +79,29 @@ export default function DashboardDrawer({ workspaces }: { workspaces: Workspace[
           </header>
 
           <div className="flex-1 overflow-y-auto px-5 py-5">
+            <section className="mb-8">
+              <h3 className="mb-3 text-xs font-medium uppercase tracking-wider text-neutral-500">
+                Your Activity
+              </h3>
+              <Link
+                href="/profile/claims"
+                onClick={close}
+                className="chip flex items-center justify-between gap-3 rounded-xl border border-neutral-200 px-4 py-3 dark:border-neutral-800"
+              >
+                <div className="flex items-center gap-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="text-neutral-500 dark:text-neutral-400">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <path d="M14 2v6h6" />
+                    <path d="M16 13H8" />
+                    <path d="M16 17H8" />
+                    <path d="M10 9H8" />
+                  </svg>
+                  <span className="font-medium">Your Claims</span>
+                </div>
+                <span aria-hidden className="text-neutral-400">→</span>
+              </Link>
+            </section>
+
             <section>
               <h3 className="mb-3 text-xs font-medium uppercase tracking-wider text-neutral-500">
                 Your organisations
@@ -88,7 +111,7 @@ export default function DashboardDrawer({ workspaces }: { workspaces: Workspace[
                   {workspaces.map(({ org, roles }) => (
                     <li key={org.id}>
                       <Link
-                        href={`/orgs?intent=search&q=${encodeURIComponent(org.name)}`}
+                        href={`/orgs/${org.id}`}
                         onClick={close}
                         className="chip flex items-center justify-between gap-3 rounded-xl border border-neutral-200 px-4 py-3 dark:border-neutral-800"
                       >

@@ -5,6 +5,16 @@ import SearchBar from "./SearchBar";
 import DashboardDrawer from "@/components/DashboardDrawer";
 
 type Org = { id: string; name: string; slug: string; type: string };
+type EventLite = {
+  id: string;
+  org_id: string;
+  name: string;
+  description: string | null;
+  event_date: string;
+  end_date: string | null;
+  starts_at: string;
+  ends_at: string;
+};
 
 /** Everything routes through /orgs — it is the only screen that can both
  *  join you to an org and hand you off to the right intent. */
@@ -16,16 +26,26 @@ export default async function Home() {
 
   // §12 — pre-fetch all orgs so the search bar can show them on focus.
   const supabase = await db();
-  const [{ data: orgs }, { data: memberships }] = await Promise.all([
+  const [{ data: orgs }, { data: memberships }, { data: events }] = await Promise.all([
     supabase.from("orgs").select("id,name,slug,type").order("name").limit(50),
     supabase
       .from("memberships")
       .select("role,orgs(id,name,slug,type)")
       .eq("user_id", user.id),
+    // Events ride along so the search bar can match on an event name without a
+    // round trip per keystroke. events_read makes them visible to anyone signed
+    // in, which is the point — you should be able to find "Techfusion" before
+    // you have joined the campus running it.
+    supabase
+      .from("events")
+      .select("id,org_id,name,description,event_date,end_date,starts_at,ends_at")
+      .order("event_date")
+      .limit(200),
   ]);
 
   // The demo mock client is untyped, so pin the shape once here.
   const orgList = (orgs ?? []) as Org[];
+  const eventList = (events ?? []) as EventLite[];
 
   // Public venues double as quick links — no extra query, they are already
   // in the org list the search bar needs.
@@ -40,6 +60,18 @@ export default async function Home() {
     entry.roles.push(m.role);
     workspaces.set(org.id, entry);
   }
+
+  const firstName = typeof user.user_metadata?.full_name === "string" && user.user_metadata.full_name
+    ? user.user_metadata.full_name.split(" ")[0]
+    : user.email?.split("@")[0] || "there";
+    
+  const greetings = [
+    "How can I help you?",
+    "What are you looking for today?",
+    "Need any assistance?",
+    "Hope you're having a great day!",
+  ];
+  const randomGreeting = greetings[Math.floor(Math.random() * greetings.length)];
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-2xl flex-col px-6">
@@ -66,7 +98,7 @@ export default async function Home() {
 
       {/* Search bar below header */}
       <div className="search-container rise relative z-20" style={{ animationDelay: "60ms" }}>
-        <SearchBar orgs={orgList} />
+        <SearchBar orgs={orgList} events={eventList} />
       </div>
 
       <div className="content-container flex flex-1 flex-col justify-center gap-8 py-10">
@@ -101,13 +133,20 @@ export default async function Home() {
             </ul>
           </section>
         )}
-        {/* Center CTA buttons */}
-        <div className="flex flex-row items-stretch gap-4">
-          <Link
-            href="/orgs?intent=search"
-            className="cta-card cta-primary rise flex-1 rounded-xl bg-accent px-5 py-4 text-center text-background"
-            style={{ animationDelay: "480ms" }}
-          >
+        {/* Greeting and Center CTA buttons */}
+        <div className="flex flex-col gap-6">
+          <div className="rise text-center" style={{ animationDelay: "400ms" }}>
+            <h2 className="text-xl sm:text-2xl font-medium tracking-tight text-neutral-900 dark:text-neutral-100">
+              Hello {firstName}, {randomGreeting}
+            </h2>
+          </div>
+          
+          <div className="flex flex-row items-stretch gap-4">
+            <Link
+              href="/orgs?intent=search"
+              className="cta-card cta-primary rise flex-1 rounded-xl bg-accent px-5 py-4 text-center text-background"
+              style={{ animationDelay: "480ms" }}
+            >
             {/* package-search — is my thing on their shelf? */}
             <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="cta-icon mx-auto mb-3">
               <path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0" />
@@ -137,6 +176,7 @@ export default async function Home() {
               We&rsquo;ll notify you when it turns up.
             </span>
           </Link>
+          </div>
         </div>
         {/* Workspaces this user actually belongs to */}
         <section>
@@ -155,7 +195,7 @@ export default async function Home() {
                   style={{ animationDelay: `${690 + i * 60}ms` }}
                 >
                   <Link
-                    href={orgHref(org)}
+                    href={`/orgs/${org.id}`}
                     className="chip flex items-center justify-between gap-3 rounded-xl border border-neutral-200 px-4 py-3 dark:border-neutral-800"
                   >
                     <span className="min-w-0">

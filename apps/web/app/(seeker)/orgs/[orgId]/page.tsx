@@ -4,18 +4,19 @@ import { formatInr } from "@findr/shared";
 import { db } from "@/lib/db/client";
 import { rolesIn } from "@/lib/auth";
 import EventForm from "./EventForm";
+import { deleteEvent } from "./actions";
+import { eventWhen } from "./when";
 
 type EventRow = {
   id: string;
   name: string;
   event_date: string;
+  end_date: string | null;
   starts_at: string;
   ends_at: string;
   capacity: number;
   price_inr: number;
 };
-
-const hhmm = (t: string) => t.slice(0, 5);
 
 export default async function OrgPage({ params }: { params: Promise<{ orgId: string }> }) {
   const { orgId } = await params;
@@ -31,10 +32,9 @@ export default async function OrgPage({ params }: { params: Promise<{ orgId: str
   const roles = await rolesIn(orgId);
   const isAdmin = roles.includes("ORG_ADMIN");
 
-  // RLS already limits this to org members; a non-member simply sees none.
   const { data: events } = await supabase
     .from("events")
-    .select("id,name,event_date,starts_at,ends_at,capacity,price_inr")
+    .select("id,name,event_date,end_date,starts_at,ends_at,capacity,price_inr")
     .eq("org_id", orgId)
     .order("event_date");
   const eventList = (events ?? []) as EventRow[];
@@ -78,13 +78,30 @@ export default async function OrgPage({ params }: { params: Promise<{ orgId: str
                 key={e.id}
                 className="flex items-center justify-between gap-3 rounded-xl border border-neutral-200 px-4 py-3 dark:border-neutral-800"
               >
-                <span className="min-w-0">
+                <Link href={`/orgs/${orgId}/events/${e.id}`} className="min-w-0 flex-1">
                   <span className="block truncate font-medium">{e.name}</span>
                   <span className="block text-xs text-neutral-500">
-                    {e.event_date} · {hhmm(e.starts_at)}–{hhmm(e.ends_at)} · {e.capacity} people
+                    {eventWhen(e)} · room for {e.capacity} items
                   </span>
-                </span>
+                </Link>
                 <span className="shrink-0 font-mono text-sm tabular-nums">{formatInr(e.price_inr)}</span>
+                {isAdmin ? (
+                  <form action={deleteEvent} className="shrink-0">
+                    <input type="hidden" name="org_id" value={orgId} />
+                    <input type="hidden" name="event_id" value={e.id} />
+                    <button
+                      type="submit"
+                      aria-label={`Remove ${e.name}`}
+                      className="rounded-full p-1.5 text-neutral-400 transition-colors duration-150 hover:bg-neutral-100 hover:text-red-600 dark:hover:bg-neutral-800"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 6h18" />
+                        <path d="M8 6V4h8v2" />
+                        <path d="M19 6l-1 14H6L5 6" />
+                      </svg>
+                    </button>
+                  </form>
+                ) : null}
               </li>
             ))}
           </ul>

@@ -7,6 +7,9 @@
   --background: #ffffff;
   --foreground: #000000;
   --accent: var(--foreground);
+  /* Native calendar and clock popups, and the icons that open them, are drawn
+     by the browser — this is the only way to tell it which theme to use. */
+  color-scheme: light dark;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -223,6 +226,36 @@ button:disabled {
   animation: backdrop-in 0.28s ease;
 }
 
+/* Event popup — a centred native <dialog>. Same backdrop and the same reason
+   for using the element: the browser owns the focus trap, Escape and inerting
+   the page behind it. */
+.modal {
+  width: min(26rem, calc(100vw - 2rem));
+  max-width: none;
+  padding: 0;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 0.75rem;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.modal::backdrop {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(0.5rem) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+
+.modal[open] {
+  animation: modal-in 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.modal[open]::backdrop {
+  animation: backdrop-in 0.2s ease;
+}
+
 /* Keycap, for the hint in the drawer footer. */
 .kbd {
   border: 1px solid rgba(0, 0, 0, 0.2);
@@ -234,10 +267,13 @@ button:disabled {
 
 @media (prefers-color-scheme: dark) {
   .drawer { border-right-color: rgba(255, 255, 255, 0.12); }
+  .modal { border-color: rgba(255, 255, 255, 0.12); }
   .kbd { border-color: rgba(255, 255, 255, 0.25); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .drawer[open],
-  .drawer[open]::backdrop { animation: none; }
+  .drawer[open]::backdrop,
+  .modal[open],
+  .modal[open]::backdrop { animation: none; }
 }
