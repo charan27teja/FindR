@@ -70,24 +70,47 @@ export default function EventPicker({
         <ul className="flex flex-col">
           {events.map((e) => (
             <li key={e.id}>
-              <button
-                onClick={() => setSelectedEvent(e)}
-                className="flex w-full items-center gap-4 border-b border-white/10 py-5 text-left transition-colors hover:bg-white/5 active:bg-white/10"
-              >
-                <div className="min-w-0 flex-1">
-                  <span className="block truncate text-[16px] font-medium text-white">{e.name}</span>
-                  <span className="mt-1 block text-sm text-[#AAAAAA]">{e.when}</span>
-                  {e.description ? (
-                    <span className="mt-2 line-clamp-2 block text-sm text-[#777777]">{e.description}</span>
-                  ) : null}
-                </div>
-                {/* Information icon instead of chevron to hint at details */}
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-white/40">
-                  <circle cx="12" cy="12" r="10"/>
-                  <path d="M12 16v-4"/>
-                  <path d="M12 8h.01"/>
-                </svg>
-              </button>
+              {/* Someone holding a found item is on their way to a desk, so the
+                  event they pick is the last thing standing between them and
+                  logging it — the confirmation step is pure friction there.
+                  Describing a loss is a slower, more considered flow, so that
+                  one keeps the popup and its detail. */}
+              {isReport ? (
+                <Link
+                  href={`/search/${orgId}?report=1&event=${e.id}`}
+                  className="flex w-full items-center gap-4 border-b border-white/10 py-5 text-left transition-colors hover:bg-white/5 active:bg-white/10"
+                >
+                  <div className="min-w-0 flex-1">
+                    <span className="block truncate text-[16px] font-medium text-white">{e.name}</span>
+                    <span className="mt-1 block text-sm text-[#AAAAAA]">{e.when}</span>
+                    {e.description ? (
+                      <span className="mt-2 line-clamp-2 block text-sm text-[#777777]">{e.description}</span>
+                    ) : null}
+                  </div>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-white/40">
+                    <path d="m9 18 6-6-6-6" />
+                  </svg>
+                </Link>
+              ) : (
+                <button
+                  onClick={() => setSelectedEvent(e)}
+                  className="flex w-full items-center gap-4 border-b border-white/10 py-5 text-left transition-colors hover:bg-white/5 active:bg-white/10"
+                >
+                  <div className="min-w-0 flex-1">
+                    <span className="block truncate text-[16px] font-medium text-white">{e.name}</span>
+                    <span className="mt-1 block text-sm text-[#AAAAAA]">{e.when}</span>
+                    {e.description ? (
+                      <span className="mt-2 line-clamp-2 block text-sm text-[#777777]">{e.description}</span>
+                    ) : null}
+                  </div>
+                  {/* Information icon instead of chevron to hint at details */}
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-white/40">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 16v-4"/>
+                    <path d="M12 8h.01"/>
+                  </svg>
+                </button>
+              )}
             </li>
           ))}
         </ul>

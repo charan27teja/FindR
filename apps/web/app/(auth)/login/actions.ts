@@ -33,10 +33,31 @@ export async function sendOtp(_prev: LoginState, form: FormData): Promise<LoginS
   return { email, sent: true };
 }
 
+/**
+ * Where Supabase should send the browser back to.
+ *
+ * Taken from the request, not from a constant, so testing on a phone over the
+ * LAN comes back to the phone rather than to the developer's laptop. `origin`
+ * is present on a server action POST; the host header is the fallback for the
+ * cases where it is stripped. The hardcoded default is last and is only ever
+ * hit if both are missing.
+ */
+async function requestOrigin(): Promise<string> {
+  const h = await headers();
+  const origin = h.get("origin");
+  if (origin) return origin;
+
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  if (host) {
+    const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "http");
+    return `${proto}://${host}`;
+  }
+  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:8000";
+}
+
 export async function signInWithGoogle(next: string = "/") {
   const supabase = await db();
-  const headersList = await headers();
-  const origin = headersList.get("origin") ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const origin = await requestOrigin();
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",

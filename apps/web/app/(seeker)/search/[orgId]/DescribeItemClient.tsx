@@ -148,6 +148,27 @@ export default function DescribeItemClient({
                             href={`/items/${m.id}?from=${encodeURIComponent(backHere)}`}
                             className="flex w-full items-center gap-3 border-b border-white/10 py-3 text-left transition-colors hover:bg-white/5 active:bg-white/10"
                           >
+                            {/* Fixed box either way, so rows line up whether or
+                                not an item has a photo. */}
+                            <div className="h-11 w-11 flex-shrink-0 overflow-hidden rounded-lg border border-white/10 bg-[#1A1A1A]">
+                              {m.imageUrl ? (
+                                /* eslint-disable-next-line @next/next/no-img-element */
+                                <img
+                                  src={m.imageUrl}
+                                  alt=""
+                                  loading="lazy"
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <span className="flex h-full w-full items-center justify-center text-white/25">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+                                    <circle cx="9" cy="9" r="2" />
+                                    <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+                                  </svg>
+                                </span>
+                              )}
+                            </div>
                             <div className="min-w-0 flex-1">
                               <span className="block truncate text-[15px] font-medium text-white">
                                 {m.public_description ?? m.category ?? "Found item"}

@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { FoundItemFields } from "@findr/shared";
 import { db } from "@/lib/db/client";
-import { serviceDb } from "@/lib/db/service";
+import { serviceDb, SIGNED_URL_TTL_SECONDS } from "@/lib/db/service";
 import { requireUser, rolesIn, STAFF_ROLES } from "@/lib/auth";
 import { extractFoundItem } from "@/lib/ai/vision";
 import { assertNoPrivateFields, serialiseItemsForSeeker } from "@/lib/serializers/item";
@@ -212,6 +212,8 @@ export type MatchItem = {
   condition: string | null;
   public_description: string | null;
   found_at: string | null;
+  /** Short-lived signed URL, or null when the item has no usable photo. */
+  imageUrl: string | null;
 };
 
 export type MatchState =
@@ -298,6 +300,13 @@ export async function findMatches(
   const safe = serialiseItemsForSeeker(scored.map((s) => s.row));
   assertNoPrivateFields(safe);
 
+  // Thumbnails. The paths are private columns the RLS client above cannot
+  // read, so they are fetched with the service role and turned into signed
+  // URLs — the paths themselves never leave this function. One batched call
+  // rather than one per row, and a failure costs the pictures, not the search.
+  const matchIds = safe.map((i) => String(i.id));
+  const urlByItem = await signedThumbnails(matchIds);
+
   return {
     status: "ok",
     items: safe.map((i) => ({
@@ -308,8 +317,49 @@ export async function findMatches(
       condition: (i.condition as string) ?? null,
       public_description: (i.public_description as string) ?? null,
       found_at: (i.found_at as string) ?? null,
+      imageUrl: urlByItem.get(String(i.id)) ?? null,
     })),
   };
+}
+
+/** item id -> signed thumbnail URL, for whichever ids have a usable photo. */
+async function signedThumbnails(itemIds: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  if (itemIds.length === 0) return out;
+
+  try {
+    const admin = serviceDb();
+    const { data: media } = await admin
+      .from("items")
+      .select("id,image_redacted_path,image_full_path")
+      .in("id", itemIds);
+
+    // Prefer the redacted crop where one exists; nothing produces them yet.
+    const pathByItem = new Map<string, string>();
+    for (const row of (media ?? []) as Record<string, string | null>[]) {
+      const path = row.image_redacted_path ?? row.image_full_path;
+      if (row.id && path) pathByItem.set(String(row.id), path);
+    }
+    if (pathByItem.size === 0) return out;
+
+    const paths = [...pathByItem.values()];
+    const { data: signed } = await admin.storage
+      .from("items")
+      .createSignedUrls(paths, SIGNED_URL_TTL_SECONDS);
+
+    const urlByPath = new Map(
+      ((signed ?? []) as { path: string | null; signedUrl: string | null }[])
+        .filter((r) => r.path && r.signedUrl)
+        .map((r) => [r.path as string, r.signedUrl as string]),
+    );
+    for (const [itemId, path] of pathByItem) {
+      const url = urlByPath.get(path);
+      if (url) out.set(itemId, url);
+    }
+  } catch {
+    // No thumbnails is a worse-looking list, not a broken one.
+  }
+  return out;
 }
 
 export type ClaimState = { error?: string; claimed?: boolean };
