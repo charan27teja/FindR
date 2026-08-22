@@ -1,12 +1,15 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useTransition } from "react";
 import Link from "next/link";
-import { submitLostItem } from "./actions";
+import { findMatches, type MatchItem } from "./actions";
+
+type EventContext = { id: string; name: string; description: string | null; when: string };
 
 interface DescribeItemClientProps {
   orgId: string;
   orgName: string;
+  event?: EventContext | null;
   isReport: boolean;
   error?: string;
 }
@@ -14,12 +17,38 @@ interface DescribeItemClientProps {
 export default function DescribeItemClient({
   orgId,
   orgName,
+  event,
   isReport,
   error,
 }: DescribeItemClientProps) {
   const [description, setDescription] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [matches, setMatches] = useState<MatchItem[] | null>(null);
+  const [matchError, setMatchError] = useState<string | null>(null);
+  const [searching, startSearch] = useTransition();
+
+  // Searching on submit rather than on every keystroke: a half-typed
+  // description matches the wrong things, and the arrow button is already the
+  // "I am done describing it" gesture.
+  function search(e: React.FormEvent) {
+    e.preventDefault();
+    if (!description.trim()) return;
+    startSearch(async () => {
+      const result = await findMatches(orgId, event?.id ?? null, description);
+      if (result.status === "ok") {
+        setMatches(result.items);
+        setMatchError(null);
+      } else {
+        setMatches(null);
+        setMatchError(result.message);
+      }
+    });
+  }
+
+  /** Where to come back to when they close an item without claiming it. */
+  const backHere = `/search/${orgId}?report=0${event ? `&event=${event.id}` : ""}`;
 
   const handleCapture = () => {
     fileInputRef.current?.click();
@@ -42,13 +71,13 @@ export default function DescribeItemClient({
 
   return (
     <div className="fixed inset-0 bg-black text-white flex flex-col max-w-md mx-auto">
-      {/* Top header — org name */}
+      {/* Top header — event name or org name */}
       <header className="flex-shrink-0 px-6 pt-10 pb-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-start gap-3">
           <Link
-            href={`/orgs?intent=${isReport ? "report" : "search"}`}
+            href={event ? `/search/${orgId}?report=${isReport ? "1" : "0"}` : `/orgs?intent=${isReport ? "report" : "search"}`}
             aria-label="Go back"
-            className="flex items-center justify-center h-10 w-10 rounded-full border border-white/15 text-white hover:bg-white/10 transition-colors"
+            className="mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-white/15 text-white transition-colors hover:bg-white/10"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -64,9 +93,21 @@ export default function DescribeItemClient({
               <path d="m15 18-6-6 6-6" />
             </svg>
           </Link>
-          <h1 className="truncate text-2xl font-bold tracking-tight text-white">
-            {orgName}
-          </h1>
+          <div className="min-w-0">
+            <h1 className="truncate text-xl font-bold tracking-tight">
+              {event ? event.name : orgName}
+            </h1>
+            {event && (
+              <>
+                <p className="truncate text-xs text-[#AAAAAA]">
+                  {orgName} · {event.when}
+                </p>
+                {event.description && (
+                  <p className="mt-1 line-clamp-2 text-xs text-[#777777]">{event.description}</p>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </header>
 
@@ -78,26 +119,112 @@ export default function DescribeItemClient({
       )}
 
       {/* Middle — vertically centered content */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 w-full">
+      <div
+        className={`flex-1 flex flex-col items-center px-6 w-full ${
+          matches && matches.length > 0 ? "justify-start overflow-y-auto pt-2" : "justify-center"
+        }`}
+      >
         {!isReport ? (
           <>
+            {/* Results sit above the box: the description stays put underneath
+                so it can be reworded when nothing here is right. */}
+            {matches !== null && (
+              <div className="mb-5 w-full">
+                {matches.length > 0 ? (
+                  <>
+                    <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[#AAAAAA]">
+                      {matches.length} possible {matches.length === 1 ? "match" : "matches"}
+                    </p>
+                    <ul className="flex flex-col">
+                      {matches.map((m) => (
+                        <li key={m.id}>
+                          <Link
+                            href={`/items/${m.id}?from=${encodeURIComponent(backHere)}`}
+                            className="flex w-full items-center gap-3 border-b border-white/10 py-3 text-left transition-colors hover:bg-white/5 active:bg-white/10"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <span className="block truncate text-[15px] font-medium text-white">
+                                {m.public_description ?? m.category ?? "Found item"}
+                              </span>
+                              <span className="block truncate text-xs text-[#AAAAAA]">
+                                {[m.category, m.colour].filter(Boolean).join(" · ")}
+                              </span>
+                            </div>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-white/40">
+                              <path d="m9 18 6-6-6-6" />
+                            </svg>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : (
+                  <p className="rounded-xl border border-dashed border-[#333333] px-4 py-5 text-center text-sm text-[#AAAAAA]">
+                    Nothing handed in matches that yet. Try different words, or
+                    check back later.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {matchError && (
+              <div className="mb-4 w-full rounded-xl bg-red-950/60 px-4 py-2.5 text-sm text-red-300">
+                {matchError}
+              </div>
+            )}
+
             <p className="mb-4 text-sm font-medium text-[#AAAAAA] text-center">
               What did you lose?
             </p>
 
-            <textarea
-              form="lost-item-form"
-              name="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe what you lost — the more specific, the better."
-              rows={5}
-              className="w-full rounded-2xl bg-[#1A1A1A] border border-white/10 px-6 py-5 text-[15px] text-white placeholder-[#AAAAAA] outline-none resize-none leading-relaxed transition-colors duration-200 focus:border-white hover:border-white/30"
-            />
+            <form id="lost-item-form" onSubmit={search} className="w-full relative">
+              
+              <textarea
+                name="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Describe what you lost — the more specific, the better."
+                rows={5}
+                className="w-full rounded-2xl bg-[#1A1A1A] border border-white/10 px-6 py-5 text-[15px] text-white placeholder-[#AAAAAA] outline-none resize-none leading-relaxed transition-colors duration-200 focus:border-white hover:border-white/30 pr-16"
+              />
 
-            <p className="mt-3 text-xs text-[#555555] leading-relaxed text-center max-w-[320px]">
-              Include color, brand, size, or where you last had it.
-            </p>
+              {/* Arrow pointing right circular button inside the describe box at bottom right */}
+              <button
+                type="submit"
+                disabled={!description.trim() || searching}
+                aria-label="Search for matches"
+                className="absolute bottom-4 right-4 flex h-10 w-10 items-center justify-center rounded-full bg-white text-black transition-all hover:bg-neutral-200 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M5 12h14" />
+                  <path d="m12 5 7 7-7 7" />
+                </svg>
+              </button>
+            </form>
+
+            {searching ? (
+              <div className="mt-4 flex items-center justify-center gap-3" role="status">
+                <span
+                  aria-hidden
+                  className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white"
+                />
+                <span className="text-xs text-[#AAAAAA]">Checking what has been handed in…</span>
+              </div>
+            ) : (
+              <p className="mt-3 max-w-[320px] text-center text-xs leading-relaxed text-[#555555]">
+                Include color, brand, size, or where you last had it.
+              </p>
+            )}
 
             {/* Photo preview (Search flow) */}
             {photo && (
@@ -205,19 +332,7 @@ export default function DescribeItemClient({
           </div>
         )}
 
-        {/* Continue button */}
-        {!isReport && (
-          <form id="lost-item-form" action={submitLostItem}>
-            <input type="hidden" name="org_id" value={orgId} />
-            <button
-              type="submit"
-              disabled={!description.trim()}
-              className="w-full rounded-full bg-white py-3.5 text-center text-sm font-semibold text-black transition-all duration-150 hover:bg-neutral-200 active:scale-[0.99] disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              Continue
-            </button>
-          </form>
-        )}
+        {/* Note: In Search flow, the Continue button is now embedded in the textarea box */}
       </div>
     </div>
   );

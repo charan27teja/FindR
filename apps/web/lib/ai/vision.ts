@@ -4,7 +4,7 @@
 import { createHash } from "node:crypto";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
-import { VisionExtractResponse } from "@findr/shared";
+import { FoundItemFields, VisionExtractResponse } from "@findr/shared";
 
 const MODEL = process.env.GEMINI_MODEL ?? "gemini-3.6-flash";
 const CACHE_DIR = process.env.RESPONSE_CACHE_DIR ?? "./.cache/vision";
@@ -195,5 +195,144 @@ export async function extractVision(
   } catch (e) {
     console.error("[vision]", e);
     return null;
+  }
+}
+
+
+// --- Found-item intake -----------------------------------------------------
+/**
+ * The seeker-facing sibling of SYSTEM_PROMPT. Whoever found the object is
+ * holding it and is about to check the model's answers on screen, so there is
+ * no public/private split here and nothing to withhold — just the four fields
+ * they would otherwise type themselves.
+ */
+const FOUND_ITEM_PROMPT = `You are looking at a photograph of an object that someone has just found and is handing in to a lost-and-found desk.
+
+Describe only what is visible in the photograph. Do not guess at a brand, a
+price, or an owner. If something is not visible, leave it out rather than
+inventing it.
+
+description — one short sentence naming the object and its most obvious
+features. Plain language, no more than about twenty words.
+
+category — a single common noun for the kind of thing it is: "backpack",
+"phone", "water bottle", "umbrella", "keys". Lowercase.
+
+colour — the dominant colour or two, in plain words: "navy blue", "black and
+silver".
+
+details — distinguishing marks visible in the photo: scratches, dents,
+stickers, engravings, wear, a cracked screen. This is what tells two similar
+objects apart. Empty string if there is genuinely nothing distinguishing.`;
+
+const FOUND_ITEM_SCHEMA = {
+  type: "object",
+  properties: {
+    description: { type: "string" },
+    category: { type: "string" },
+    colour: { type: "string" },
+    details: { type: "string" },
+  },
+  required: ["description", "category", "colour", "details"],
+  propertyOrdering: ["description", "category", "colour", "details"],
+};
+
+/**
+ * INV-6 again: null rather than a throw. A model that is down or slow must not
+ * stop someone handing in a wallet — the review screen simply opens with empty
+ * fields for them to fill in themselves.
+ */
+export async function extractFoundItem(
+  imageB64: string,
+  context: { orgName?: string; eventName?: string } = {},
+  mimeType = "image/jpeg",
+): Promise<FoundItemFields | null> {
+  // Namespaced: the same photo can be run through both prompts, and without
+  // this the two answers would overwrite each other in the cache.
+  const key = cacheKey(imageB64, `${MODEL}:found-item`);
+  const cached = await readFoundCache(key);
+  if (cached) return cached;
+  if (process.env.DEMO_MODE === "true") return null;
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
+
+  const where = [context.eventName, context.orgName].filter(Boolean).join(", ");
+
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: FOUND_ITEM_PROMPT }] },
+          contents: [
+            {
+              role: "user",
+              parts: [
+                { inlineData: { mimeType, data: imageB64 } },
+                { text: where ? `Found at: ${where}` : "Found item." },
+              ],
+            },
+          ],
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: FOUND_ITEM_SCHEMA,
+            temperature: 0.2,
+            thinkingConfig: { thinkingLevel: "low" },
+          },
+        }),
+        // Someone is watching a spinner, so this budget is tighter than intake's.
+        signal: AbortSignal.timeout(15_000),
+      },
+    );
+
+    if (!res.ok) {
+      console.error(`[found-item] ${MODEL} ${res.status}: ${(await res.text()).slice(0, 300)}`);
+      return null;
+    }
+
+    const body = await res.json();
+    const text = body?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) {
+      console.error(`[found-item] empty candidate (finishReason=${body?.candidates?.[0]?.finishReason})`);
+      return null;
+    }
+
+    const parsed = parseFoundItemJson(JSON.parse(text));
+    await writeFoundCache(key, parsed);
+    return parsed;
+  } catch (e) {
+    console.error("[found-item]", e);
+    return null;
+  }
+}
+
+/** Exported for the test: everything that can be wrong with a response is here. */
+export function parseFoundItemJson(raw: unknown): FoundItemFields {
+  const o = (raw ?? {}) as Record<string, unknown>;
+  return FoundItemFields.parse({
+    description: o.description ?? "",
+    category: o.category ?? "",
+    colour: o.colour ?? "",
+    details: o.details ?? "",
+  });
+}
+
+async function readFoundCache(key: string): Promise<FoundItemFields | null> {
+  try {
+    return FoundItemFields.parse(JSON.parse(await readFile(path.join(CACHE_DIR, `${key}.json`), "utf8")));
+  } catch {
+    return null;
+  }
+}
+
+async function writeFoundCache(key: string, value: FoundItemFields): Promise<void> {
+  try {
+    await mkdir(CACHE_DIR, { recursive: true });
+    await writeFile(path.join(CACHE_DIR, `${key}.json`), JSON.stringify(value, null, 2));
+  } catch {
+    // A cold cache is not an intake failure.
   }
 }

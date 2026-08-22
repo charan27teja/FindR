@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseVisionJson, cacheKey, normalisedCropBox } from "./vision.ts";
+import { parseVisionJson, parseFoundItemJson, cacheKey, normalisedCropBox } from "./vision.ts";
 
 const ok = {
   public: {
@@ -59,4 +59,30 @@ test("cache key is stable, image-derived and model-scoped", () => {
   assert.notEqual(cacheKey("abc", "m1"), cacheKey("abd", "m1"));
   // Otherwise switching GEMINI_MODEL replays the old model's cached answer.
   assert.notEqual(cacheKey("abc", "gemini-3.6-flash"), cacheKey("abc", "gemini-2.5-flash"));
+});
+
+test("found-item: a well-formed response comes through trimmed", () => {
+  const r = parseFoundItemJson({
+    description: "  A navy blue backpack with a front zip pocket.  ",
+    category: "backpack",
+    colour: "navy blue",
+    details: "Frayed strap on the left side.",
+  });
+  assert.equal(r.description, "A navy blue backpack with a front zip pocket.");
+  assert.equal(r.details, "Frayed strap on the left side.");
+});
+
+test("found-item: nothing distinguishing is null, not an empty string", () => {
+  const r = parseFoundItemJson({
+    description: "A plain black umbrella.",
+    category: "umbrella",
+    colour: "black",
+    details: "",
+  });
+  assert.equal(r.details, null, "an empty details string becomes null for the column");
+});
+
+test("found-item: a missing field fails loudly rather than saving a blank item", () => {
+  assert.throws(() => parseFoundItemJson({ category: "keys", colour: "silver" }));
+  assert.throws(() => parseFoundItemJson(null));
 });

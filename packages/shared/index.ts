@@ -127,6 +127,22 @@ export const OrgContact = z
   .refine((c) => c.email || c.phone, { message: "Give an email or a phone number." });
 export type OrgContact = z.infer<typeof OrgContact>;
 
+/**
+ * What the model reads off a photo of a found item, and what the person who
+ * found it may correct before it is saved. Unlike VisionExtractResponse there
+ * is no public/private split: the finder is looking at the object, so there is
+ * nothing to withhold from them. The INV-1 separation happens later, when the
+ * item is listed to seekers.
+ */
+export const FoundItemFields = z.object({
+  description: trimmed.min(3, "Describe the object.").max(500),
+  category: trimmed.min(1, "Give it a category.").max(60),
+  colour: trimmed.min(1, "Give its colour.").max(60),
+  /** Scratches, marks, engravings — blank is a legitimate answer. */
+  details: z.preprocess(blankToNull, trimmed.max(500).nullish()),
+});
+export type FoundItemFields = z.infer<typeof FoundItemFields>;
+
 export const MAX_ORG_CONTACTS = 3;
 
 export const NewOrg = z.object({
