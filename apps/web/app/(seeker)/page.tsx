@@ -18,10 +18,8 @@ type EventLite = {
   ends_at: string;
 };
 
-/** Everything routes through /orgs — it is the only screen that can both
- *  join you to an org and hand you off to the right intent. */
 const orgHref = (o: Org, intent = "search") =>
-  `/orgs?intent=${intent}&q=${encodeURIComponent(o.name)}`;
+  `/search/${o.id}?report=${intent === "report" ? "1" : "0"}`;
 
 export default async function Home() {
   const user = await requireUser();
