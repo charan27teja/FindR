@@ -105,7 +105,7 @@ export default async function Home() {
         <div className="flex flex-row items-stretch gap-4">
           <Link
             href="/orgs?intent=search"
-            className="cta-card cta-primary rise flex-1 rounded-xl bg-accent px-5 py-4 text-center text-background"
+            className="cta-card cta-primary rise flex-1 rounded-xl bg-accent px-5 py-4 text-center text-background border-2 border-transparent hover:border-black transition-colors"
             style={{ animationDelay: "480ms" }}
           >
             {/* package-search — is my thing on their shelf? */}
