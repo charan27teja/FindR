@@ -157,7 +157,7 @@ export default function DescribeItemClient({
                   <circle cx="9" cy="9" r="2" />
                   <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
                 </svg>
-                <span className="text-sm font-medium">No images</span>
+                <span className="text-sm font-medium">No image</span>
               </div>
             )}
           </>
@@ -167,41 +167,43 @@ export default function DescribeItemClient({
       {/* Bottom — camera bar + continue button */}
       <div className="flex-shrink-0 px-6 pb-8 pt-4 flex flex-col gap-4">
         {/* Camera bar */}
-        <div className="flex items-center justify-center rounded-full bg-[#1A1A1A] py-3 px-6">
-          {/* Hidden file input for camera capture */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={handleFileChange}
-            className="hidden"
-          />
-          <button
-            type="button"
-            onClick={handleCapture}
-            className="flex items-center justify-center h-12 w-12 rounded-full border-2 border-white/40 text-white hover:border-white hover:bg-white/10 transition-colors"
-            aria-label="Open camera"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.75"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+        {isReport && (
+          <div className="flex items-center justify-center rounded-full bg-[#1A1A1A] py-3 px-6">
+            {/* Hidden file input for camera capture */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={handleCapture}
+              className="flex items-center justify-center h-12 w-12 rounded-full border-2 border-white/40 text-white hover:border-white hover:bg-white/10 transition-colors"
+              aria-label="Open camera"
             >
-              <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z" />
-              <circle cx="12" cy="13" r="3" />
-            </svg>
-          </button>
-          <span className="ml-3 text-xs text-[#AAAAAA]">
-            {photo ? "Photo added" : "Add a photo"}
-          </span>
-        </div>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z" />
+                <circle cx="12" cy="13" r="3" />
+              </svg>
+            </button>
+            <span className="ml-3 text-xs text-[#AAAAAA]">
+              {photo ? "Photo added" : "Add a photo"}
+            </span>
+          </div>
+        )}
 
         {/* Continue button */}
         {!isReport && (
