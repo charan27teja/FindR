@@ -23,6 +23,8 @@ export async function submitLostItem(
   const eventId = String(form.get("event_id") ?? "") || null;
   const description = String(form.get("description") ?? "").trim();
   const category = String(form.get("category") ?? "").trim() || null;
+  const colour = String(form.get("colour") ?? "").trim() || null;
+  const photo = String(form.get("photo") ?? "");
 
   if (!description) {
     return { error: "Please describe what you lost." };
@@ -30,11 +32,30 @@ export async function submitLostItem(
 
   const supabase = await db();
 
+  // Upload the photo if one was provided.
+  let imagePath: string | null = null;
+  const parts = splitDataUrl(photo);
+  if (parts) {
+    const admin = serviceDb();
+    const extension = parts.mimeType === "image/png" ? "png" : "jpg";
+    imagePath = `loss-reports/${orgId}/${crypto.randomUUID()}.${extension}`;
+    const bytes = Buffer.from(parts.b64, "base64");
+    const { error: uploadError } = await admin.storage
+      .from("items")
+      .upload(imagePath, bytes, { contentType: parts.mimeType, upsert: false });
+    if (uploadError) {
+      return { error: `Could not save the photo: ${uploadError.message}` };
+    }
+  }
+
   const { error } = await supabase.from("loss_reports").insert({
     org_id: orgId,
     user_id: user.id,
     description,
     category,
+    colour,
+    image_path: imagePath,
+    event_id: eventId,
     status: "OPEN",
   });
 
