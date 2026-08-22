@@ -1,0 +1,19 @@
+node_modules/
+.next/
+out/
+build/
+dist/
+.env
+.env.local
+*.tsbuildinfo
+next-env.d.ts
+
+# ai service
+__pycache__/
+*.py[cod]
+.venv/
+apps/ai/.cache/
+
+# supabase
+supabase/.temp/
+supabase/.branches/
