@@ -48,15 +48,15 @@ export default async function Home() {
         <Link
           href="/profile"
           aria-label="Profile"
-          className="group flex shrink-0 items-center gap-1.5 rounded-full p-1.5 transition-transform duration-150 hover:scale-110 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+          className="group flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 transition-colors duration-150 hover:bg-neutral-100 dark:hover:bg-neutral-800"
         >
+          <span className="text-sm font-medium text-foreground">
+            {user.user_metadata?.full_name || user.email?.split("@")[0] || "Account"}
+          </span>
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="8" r="4" />
             <path d="M20 21a8 8 0 0 0-16 0" />
           </svg>
-          <span className="max-w-0 overflow-hidden text-sm font-medium text-foreground opacity-0 transition-all duration-200 group-hover:max-w-24 group-hover:opacity-100">
-            My Account
-          </span>
         </Link>
       </header>
 
