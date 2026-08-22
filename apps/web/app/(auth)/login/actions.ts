@@ -1,27 +1,26 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { db } from "@/lib/db/client";
 
-export type LoginState = { email?: string; error?: string; sent?: boolean };
-
-export async function sendOtp(_prev: LoginState, form: FormData): Promise<LoginState> {
-  const email = String(form.get("email") ?? "").trim().toLowerCase();
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { email, error: "Enter a valid email address." };
-
+export async function signInWithGoogle(next: string = "/") {
   const supabase = await db();
-  const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
-  if (error) return { email, error: error.message };
-  return { email, sent: true };
-}
+  const headersList = await headers();
+  const origin = headersList.get("origin") ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
-export async function verifyOtp(_prev: LoginState, form: FormData): Promise<LoginState> {
-  const email = String(form.get("email") ?? "");
-  const token = String(form.get("token") ?? "").trim();
-  const next = String(form.get("next") ?? "/") || "/";
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
+    },
+  });
 
-  const supabase = await db();
-  const { error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
-  if (error) return { email, sent: true, error: "That code did not work. Check it and try again." };
-  redirect(next);
+  if (data?.url) {
+    redirect(data.url);
+  }
+
+  if (error) {
+    throw new Error(error.message);
+  }
 }
