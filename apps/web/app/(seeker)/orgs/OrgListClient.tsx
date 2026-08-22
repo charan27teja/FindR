@@ -60,7 +60,7 @@ export default function OrgListClient({
           </Link>
           <h1 className="text-xl font-bold tracking-tight">
             {intent === "report"
-              ? "Where did you lose it?"
+              ? "Where did you find it?"
               : "Select Organisation"}
           </h1>
         </div>
