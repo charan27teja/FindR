@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { OrgIcon } from "@/components/OrgIcon";
+import SearchingAnimation from "@/components/SearchingAnimation";
 
 interface OrgItem {
   id: string;
@@ -26,6 +27,25 @@ export default function OrgListClient({
   error,
 }: OrgListClientProps) {
   const [query, setQuery] = useState(initialQuery);
+  const [isFocused, setIsFocused] = useState(false);
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+
+  const PLACEHOLDERS = [
+    "Search for a lost item",
+    "Try 'black wallet' or 'iPhone 13'",
+    "Search organisation",
+    "Search by item name or category",
+  ];
+
+  useEffect(() => {
+    if (isFocused || query) return;
+
+    const interval = setInterval(() => {
+      setPlaceholderIndex((prev) => (prev + 1) % PLACEHOLDERS.length);
+    }, 3400);
+
+    return () => clearInterval(interval);
+  }, [isFocused, query, PLACEHOLDERS.length]);
 
   const q = query.trim().toLowerCase();
   const filtered = q
@@ -132,7 +152,7 @@ export default function OrgListClient({
         </div>
 
         {/* Pill-shaped search bar */}
-        <div className="relative">
+        <div className="relative flex items-center rounded-full bg-[#1A1A1A] border border-white/10 focus-within:border-white/30 transition-colors">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="18"
@@ -148,12 +168,26 @@ export default function OrgListClient({
             <circle cx="11" cy="11" r="8" />
             <path d="m21 21-4.3-4.3" />
           </svg>
+
+          {/* Smooth vertical slide-up placeholder ticker */}
+          {!query && !isFocused && (
+            <div className="pointer-events-none absolute left-12 right-5 top-1/2 -translate-y-1/2 overflow-hidden h-6 text-[14px] text-[#AAAAAA] select-none flex items-center">
+              <span
+                key={placeholderIndex}
+                className="block truncate animate-placeholder-slide"
+              >
+                {PLACEHOLDERS[placeholderIndex]}
+              </span>
+            </div>
+          )}
+
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search organisation"
-            className="w-full rounded-full bg-[#1A1A1A] py-3.5 pl-12 pr-5 text-sm text-white placeholder-[#AAAAAA] outline-none border-0"
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            className="w-full rounded-full bg-transparent py-3.5 pl-12 pr-5 text-sm text-white outline-none border-0"
           />
         </div>
       </div>
@@ -187,27 +221,8 @@ export default function OrgListClient({
             )}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-20">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="40"
-              height="40"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="mb-4 text-[#AAAAAA]"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.3-4.3" />
-            </svg>
-            <p className="text-sm text-[#AAAAAA]">
-              {query.trim()
-                ? `No organisations match "${query}"`
-                : "No organisations found yet."}
-            </p>
+          <div className="py-12">
+            <SearchingAnimation text={query.trim() ? `Searching matches for "${query}"…` : "No organisations found"} />
           </div>
         )}
       </div>
