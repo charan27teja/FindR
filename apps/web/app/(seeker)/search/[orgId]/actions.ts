@@ -8,16 +8,45 @@ import { requireUser } from "@/lib/auth";
 import { extractFoundItem } from "@/lib/ai/vision";
 import { assertNoPrivateFields, serialiseItemsForSeeker } from "@/lib/serializers/item";
 
-export async function submitLostItem(formData: FormData) {
-  const orgId = String(formData.get("org_id") ?? "");
-  const description = String(formData.get("description") ?? "").trim();
+export type LostReportState = {
+  error?: string;
+  reported?: boolean;
+  matches?: MatchItem[];
+};
+
+export async function submitLostItem(
+  _prev: LostReportState,
+  form: FormData,
+): Promise<LostReportState> {
+  const user = await requireUser();
+  const orgId = String(form.get("org_id") ?? "");
+  const eventId = String(form.get("event_id") ?? "") || null;
+  const description = String(form.get("description") ?? "").trim();
+  const category = String(form.get("category") ?? "").trim() || null;
 
   if (!description) {
-    redirect(`/search/${orgId}?error=${encodeURIComponent("Please describe what you lost.")}`);
+    return { error: "Please describe what you lost." };
   }
 
-  // TODO: insert into loss_reports once the matching pipeline is finalised.
-  redirect("/");
+  const supabase = await db();
+
+  const { error } = await supabase.from("loss_reports").insert({
+    org_id: orgId,
+    user_id: user.id,
+    description,
+    category,
+    status: "OPEN",
+  });
+
+  if (error) return { error: error.message };
+
+  // Immediately run keyword matching so the user sees potential hits.
+  const matchResult = await findMatches(orgId, eventId, description);
+  if (matchResult.status === "ok") {
+    return { reported: true, matches: matchResult.items };
+  }
+
+  return { reported: true, matches: [] };
 }
 
 /** A data URL is what the <img> preview already holds; the API wants the tail. */
