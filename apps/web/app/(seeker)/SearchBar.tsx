@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { eventWhen } from "./orgs/[orgId]/when";
+import { OrgIcon } from "@/components/OrgIcon";
 
 type Org = { id: string; name: string; slug: string; type: string };
 export type EventLite = {
@@ -59,6 +60,107 @@ export default function SearchBar({ orgs, events = [] }: { orgs: Org[]; events?:
       )
     : orgs;
 
+  // A public venue's desk is open all year and runs no events; a private
+  // organisation's items live under one. That is a real difference in how you
+  // reach the thing you lost, so the list says so rather than mixing them.
+  const publicOrgs = filtered.filter((o) => o.type === "PUBLIC");
+  const privateOrgs = filtered.filter((o) => o.type !== "PUBLIC");
+
+  /** Expanded by hover (CSS below), or by tapping the chevron, which is the
+   *  same affordance on a phone where there is no hover at all. */
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggle = (orgId: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(orgId)) next.add(orgId);
+      return next;
+    });
+
+  function orgRow(org: Org) {
+    const orgEvents = eventsOf(org.id);
+    const hasTree = org.type !== "PUBLIC" && orgEvents.length > 0;
+    // An org that surfaced because one of its events matched should show the
+    // reason without being poked.
+    const matchedByEvent = !!q && orgEvents.some((e) => e.name.toLowerCase().includes(q));
+    // Named apart from the dropdown's own `open` — this is just this row's tree.
+    const treeOpen = expanded.has(org.id) || matchedByEvent;
+
+    return (
+      <li key={org.id} className="group">
+        <div className="flex items-center">
+          <Link
+            href={`/search/${org.id}`}
+            onClick={() => setOpen(false)}
+            className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 transition-colors hover:bg-foreground/5"
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-foreground/5 text-foreground">
+              <OrgIcon name={org.name} className="h-4 w-4 text-neutral-500" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="block truncate font-medium">{org.name}</span>
+              <span className="block text-xs uppercase tracking-wide text-neutral-500">
+                {org.type.toLowerCase().replace("_", " ")}
+                {hasTree ? ` · ${orgEvents.length} event${orgEvents.length === 1 ? "" : "s"}` : ""}
+              </span>
+            </div>
+          </Link>
+          {hasTree && (
+            <button
+              type="button"
+              onClick={() => toggle(org.id)}
+              aria-expanded={treeOpen}
+              aria-label={`${treeOpen ? "Hide" : "Show"} events at ${org.name}`}
+              className="mr-2 rounded-full p-2 text-neutral-400 transition-colors hover:bg-foreground/5 hover:text-foreground"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={`transition-transform duration-150 ${treeOpen ? "rotate-90" : ""} group-hover:rotate-90`}
+              >
+                <path d="m9 18 6-6-6-6" />
+              </svg>
+            </button>
+          )}
+        </div>
+
+        {/* The tree. Hover reveals it on a pointer; group-focus-within keeps it
+            reachable by keyboard; the chevron covers touch, where hover never
+            fires at all. */}
+        {hasTree && (
+          <ul
+            className={`${treeOpen ? "block" : "hidden group-hover:block group-focus-within:block"} ml-6 border-l border-foreground/15`}
+          >
+            {orgEvents.map((e) => (
+              <li key={e.id}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    setChosen(e);
+                  }}
+                  className="flex w-full items-baseline gap-2 py-2 pl-3 pr-4 text-left transition-colors hover:bg-foreground/5"
+                >
+                  <span aria-hidden className="text-neutral-400">└</span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm">{e.name}</span>
+                    <span className="block text-xs text-neutral-500">{eventWhen(e)}</span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </li>
+    );
+  }
+
   return (
     <div ref={wrapperRef} className="relative z-50">
       <div className="relative">
@@ -90,39 +192,21 @@ export default function SearchBar({ orgs, events = [] }: { orgs: Org[]; events?:
       {open && (
         <ul className="search-dropdown absolute left-0 right-0 top-full z-50 mt-2 max-h-64 overflow-y-auto rounded-lg border border-foreground/15 bg-[var(--background)] py-1.5 shadow-xl">
           {filtered.length > 0 ? (
-            filtered.map((o) => (
-              <li key={o.id}>
-                <Link
-                  href={`/search/${o.id}`}
-                  onClick={() => setOpen(false)}
-                  className="block px-4 py-3 transition-colors hover:bg-foreground/5"
-                >
-                  <span className="font-medium">{o.name}</span>
-                  <span className="block text-xs uppercase tracking-wide text-neutral-500">
-                    {o.type.toLowerCase().replace("_", " ")}
-                  </span>
-                </Link>
-                {/* Only while searching: with an empty box the dropdown is a
-                    plain list of every org, and nesting every schedule under
-                    it would bury them. */}
-                {q
-                  ? eventsOf(o.id).map((e) => (
-                      <button
-                        key={e.id}
-                        type="button"
-                        onClick={() => {
-                          setOpen(false);
-                          setChosen(e);
-                        }}
-                        className="block w-full border-l-2 border-foreground/15 py-2 pl-6 pr-4 text-left transition-colors hover:bg-foreground/5"
-                      >
-                        <span className="block truncate text-sm">{e.name}</span>
-                        <span className="block text-xs text-neutral-500">{eventWhen(e)}</span>
-                      </button>
-                    ))
-                  : null}
-              </li>
-            ))
+            <>
+              {publicOrgs.length > 0 && (
+                <li className="px-4 pb-1 pt-2 text-xs font-medium uppercase tracking-wider text-neutral-500">
+                  Public places
+                </li>
+              )}
+              {publicOrgs.map(orgRow)}
+
+              {privateOrgs.length > 0 && (
+                <li className="px-4 pb-1 pt-3 text-xs font-medium uppercase tracking-wider text-neutral-500">
+                  Organisations
+                </li>
+              )}
+              {privateOrgs.map(orgRow)}
+            </>
           ) : (
             <li className="px-4 py-6 text-center text-sm text-neutral-500">
               {query.trim()
