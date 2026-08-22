@@ -30,12 +30,34 @@ export default async function SearchOrgPage({
   const isReport = report === "1";
 
   const supabase = await db();
-  const { data: org } = await supabase
+  const { data: org, error: orgError } = await supabase
     .from("orgs")
     .select("id,name,slug,type")
     .eq("id", orgId)
     .single();
+
+  // PGRST116 is "no rows" — a real 404. Anything else is the query failing,
+  // and reporting that as a missing organisation sends you looking in
+  // completely the wrong place.
+  if (orgError && orgError.code !== "PGRST116") {
+    return (
+      <div className="mx-auto min-h-dvh max-w-md bg-black px-6 py-10 text-white">
+        <p role="alert" className="rounded-xl bg-red-950/60 px-4 py-3 text-sm text-red-300">
+          Could not load this organisation: {orgError.message}
+        </p>
+      </div>
+    );
+  }
   if (!org) notFound();
+
+  // Asked for separately, and allowed to fail. These columns arrive with a
+  // migration; folding them into the query above meant that until it was
+  // applied the whole page 404'd for a map it could perfectly well do without.
+  const { data: place } = await supabase
+    .from("orgs")
+    .select("location,latitude,longitude")
+    .eq("id", orgId)
+    .single();
 
   // A public venue has no event to pick — a station's desk is open all year.
   // Anything else runs events, and which one an item turned up at is the
@@ -109,6 +131,9 @@ export default async function SearchOrgPage({
       orgId={org.id as string}
       orgName={org.name as string}
       orgType={org.type as string}
+      address={(place?.location as string | null) ?? null}
+      latitude={(place?.latitude as number | null) ?? null}
+      longitude={(place?.longitude as number | null) ?? null}
       event={chosenEventContext}
     />
   );

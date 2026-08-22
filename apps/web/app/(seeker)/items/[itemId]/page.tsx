@@ -107,7 +107,15 @@ export default async function ItemPage({
         </p>
 
         <div className="mt-6">
-          <ClaimButton itemId={String(safe.id)} alreadyClaimed={!!existing} />
+          {/* A returned item is a record, not something still on the shelf.
+              Offering a claim on it would be a dead end. */}
+          {String(safe.state) === "LISTED" ? (
+            <ClaimButton itemId={String(safe.id)} alreadyClaimed={!!existing} />
+          ) : (
+            <p className="rounded-xl border border-white/20 px-4 py-3 text-center text-sm text-[#AAAAAA]">
+              This item has already been returned to its owner.
+            </p>
+          )}
         </div>
       </div>
     </div>

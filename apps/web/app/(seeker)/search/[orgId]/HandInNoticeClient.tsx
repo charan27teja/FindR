@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { notifyFound, type NoticeState } from "./actions";
+import OfficeMap from "@/components/OfficeMap";
 
 type EventContext = { id: string; name: string; description: string | null; when: string };
 
@@ -20,11 +21,17 @@ export default function HandInNoticeClient({
   orgId,
   orgName,
   orgType,
+  address,
+  latitude,
+  longitude,
   event,
 }: {
   orgId: string;
   orgName: string;
   orgType: string;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
   event: EventContext | null;
 }) {
   const [state, action, pending] = useActionState<NoticeState, FormData>(notifyFound, {});
@@ -98,6 +105,12 @@ export default function HandInNoticeClient({
             )}
           </p>
         </div>
+
+        {/* Only with real coordinates. An org nobody has placed yet gets no
+            map rather than a pin in the wrong street. */}
+        {latitude !== null && longitude !== null ? (
+          <OfficeMap name={orgName} latitude={latitude} longitude={longitude} address={address} />
+        ) : null}
 
         {/* Private orgs get told in advance. A public desk is staffed all day
             and does not need warning; an event desk might be a table someone

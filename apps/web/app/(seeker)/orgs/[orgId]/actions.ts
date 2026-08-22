@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { NewEvent, eventPrice } from "@findr/shared";
 import { db } from "@/lib/db/client";
+import { serviceDb } from "@/lib/db/service";
 import { requireUser, rolesIn } from "@/lib/auth";
 
 export type EventFormState = { error?: string; created?: string; saved?: string };
@@ -112,10 +113,34 @@ export async function markClaimCollected(form: FormData) {
   if (!held.includes("ORG_ADMIN") && !held.includes("VERIFIER")) return;
 
   const supabase = await db();
+  const { data: claim } = await supabase
+    .from("claims")
+    .select("id,item_id")
+    .eq("id", claimId)
+    .eq("org_id", orgId)
+    .single();
+  if (!claim) return;
+
   await supabase
     .from("claims")
     .update({ status: "COLLECTED", reviewed_by: user.id })
     .eq("id", claimId)
+    .eq("org_id", orgId);
+
+  // The item leaves the shelf with its owner, so it leaves the listing too.
+  // Closing the claim alone would leave it LISTED and it would keep coming
+  // back as a match for the next person describing something similar.
+  // RETURNED is the state the enum already has for this; findMatches and the
+  // item page both key off state = 'LISTED', so one change covers every query
+  // rather than each of them learning to exclude collected claims.
+  //
+  // Service role because *_rls.sql revokes write on items from authenticated
+  // and grants back select only — the same reason logging an item does.
+  const admin = serviceDb();
+  await admin
+    .from("items")
+    .update({ state: "RETURNED" })
+    .eq("id", claim.item_id)
     .eq("org_id", orgId);
 
   revalidatePath(`/orgs/${orgId}/events/${eventId}`);
