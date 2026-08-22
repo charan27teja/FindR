@@ -207,9 +207,21 @@ export async function extractVision(
  */
 const FOUND_ITEM_PROMPT = `You are looking at a photograph of an object that someone has just found and is handing in to a lost-and-found desk.
 
-Describe only what is visible in the photograph. Do not guess at a brand, a
-price, or an owner. If something is not visible, leave it out rather than
-inventing it.
+Describe THE OBJECT ONLY. The photograph was taken wherever the person happened
+to be standing, and none of that is part of the item. Say nothing about:
+the background, the surface it is resting on, the floor, a table, a desk, a
+counter, the lighting, the room, anyone holding it, hands, other objects beside
+it, or where the photo appears to have been taken. If the object is being held,
+describe the object and not the hand. If there are several things in frame,
+describe only the one that is the subject of the photo.
+
+Write as if the object were on a plain white background, however it actually
+appears. A description that mentions the surroundings is wrong even if it is
+accurate, because it is used to match against someone recalling the item from
+memory — and they remember the thing, not the desk it was photographed on.
+
+Do not guess at a brand, a price, or an owner. If something is not visible,
+leave it out rather than inventing it.
 
 description — one short sentence naming the object and its most obvious
 features. Plain language, no more than about twenty words.
@@ -217,12 +229,13 @@ features. Plain language, no more than about twenty words.
 category — a single common noun for the kind of thing it is: "backpack",
 "phone", "water bottle", "umbrella", "keys". Lowercase.
 
-colour — the dominant colour or two, in plain words: "navy blue", "black and
-silver".
+colour — the dominant colour or two of the object itself, in plain words:
+"navy blue", "black and silver". Never the colour of the background.
 
-details — distinguishing marks visible in the photo: scratches, dents,
-stickers, engravings, wear, a cracked screen. This is what tells two similar
-objects apart. Empty string if there is genuinely nothing distinguishing.`;
+details — distinguishing marks ON THE OBJECT: scratches, dents, stickers,
+engravings, wear, a cracked screen. This is what tells two similar objects
+apart. Empty string if there is genuinely nothing distinguishing about the
+object itself.`;
 
 const FOUND_ITEM_SCHEMA = {
   type: "object",
@@ -248,7 +261,7 @@ export async function extractFoundItem(
 ): Promise<FoundItemFields | null> {
   // Namespaced: the same photo can be run through both prompts, and without
   // this the two answers would overwrite each other in the cache.
-  const key = cacheKey(imageB64, `${MODEL}:found-item`);
+  const key = cacheKey(imageB64, `${MODEL}:found-item-v2`);
   const cached = await readFoundCache(key);
   if (cached) return cached;
 
