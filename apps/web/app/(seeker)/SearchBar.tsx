@@ -4,7 +4,54 @@ import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { eventWhen } from "./orgs/[orgId]/when";
+import { startRecording, MAX_RECORDING_MS, type Recorder } from "@/lib/audio/record";
+import { transcribeVoiceSearch } from "./actions";
 import { OrgIcon } from "@/components/OrgIcon";
+
+type SpeechRecognitionLike = {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  maxAlternatives: number;
+  start(): void;
+  stop(): void;
+  abort(): void;
+  onstart: (() => void) | null;
+  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+  onerror: ((e: { error: string }) => void) | null;
+  onend: (() => void) | null;
+};
+
+/** Chrome and Edge expose it prefixed; Firefox does not expose it at all. */
+function getSpeechRecognition(): (new () => SpeechRecognitionLike) | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as Record<string, unknown>;
+  return (w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null) as
+    | (new () => SpeechRecognitionLike)
+    | null;
+}
+
+/** Why it stopped, in words worth showing someone. */
+function voiceErrorMessage(code: string): string | null {
+  switch (code) {
+    case "aborted":
+      return null; // They pressed stop. Not a failure.
+    case "not-allowed":
+    case "service-not-allowed":
+      return "Microphone blocked. Allow it for this site in your browser settings.";
+    case "no-speech":
+      return "Didn't catch that — try again.";
+    case "audio-capture":
+      return "No microphone found.";
+    case "network":
+      // Chrome routes recognition through Google's speech service; plenty of
+      // networks cannot reach it even when the machine is perfectly online.
+      // The caller falls back to recording rather than showing this.
+      return "Voice search could not reach the speech service.";
+    default:
+      return "Voice search failed. Try again.";
+  }
+}
 
 type Org = { id: string; name: string; slug: string; type: string };
 export type EventLite = {
@@ -55,6 +102,70 @@ export default function SearchBar({ orgs, events = [] }: { orgs: Org[]; events?:
 
   const [isFocused, setIsFocused] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  // Held across renders on purpose. A recognition object created inside the
+  // handler is only referenced by its own callbacks, and browsers have been
+  // observed collecting it mid-session — the mic light goes out and no result
+  // ever arrives. Keeping it here also lets a second press stop it.
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const recorderRef = useRef<Recorder | null>(null);
+  const recordingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [transcribing, setTranscribing] = useState(false);
+
+  // Leaving the page with the microphone open is worse than a lost result.
+  useEffect(() => () => {
+    recognitionRef.current?.abort();
+    void recorderRef.current?.stop();
+  }, []);
+
+  /**
+   * Records a few seconds and has it transcribed server-side.
+   *
+   * Used when the browser's own recogniser cannot reach its service, which is
+   * the "network" error and is not something the page can retry its way out
+   * of. Same button, same states — the person is not told which engine ran.
+   */
+  const recordAndTranscribe = async () => {
+    try {
+      recorderRef.current = await startRecording();
+    } catch {
+      setVoiceError("Microphone blocked. Allow it for this site in your browser settings.");
+      return;
+    }
+    setIsListening(true);
+    setVoiceError(null);
+
+    // A hard stop, so a forgotten recording cannot run forever.
+    const timer = setTimeout(() => void finishRecording(), MAX_RECORDING_MS);
+    recordingTimerRef.current = timer;
+  };
+
+  const finishRecording = async () => {
+    if (recordingTimerRef.current) {
+      clearTimeout(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    const recorder = recorderRef.current;
+    recorderRef.current = null;
+    if (!recorder) return;
+
+    setIsListening(false);
+    setTranscribing(true);
+    const audio = await recorder.stop();
+    if (!audio) {
+      setTranscribing(false);
+      setVoiceError("Nothing was recorded.");
+      return;
+    }
+    const result = await transcribeVoiceSearch(audio);
+    setTranscribing(false);
+    if (result.text) {
+      setQuery(result.text);
+      setOpen(true);
+    } else {
+      setVoiceError(result.error ?? "Could not make out any speech.");
+    }
+  };
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
 
   const PLACEHOLDERS = [
@@ -74,46 +185,67 @@ export default function SearchBar({ orgs, events = [] }: { orgs: Org[]; events?:
     return () => clearInterval(interval);
   }, [isFocused, query, isListening, PLACEHOLDERS.length]);
 
-  const startVoiceSearch = () => {
-    if (typeof window === "undefined") return;
+  const toggleVoiceSearch = () => {
+    if (transcribing) return;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert("Voice search is not supported in this browser.");
+    // Second press stops it. Calling start() twice throws InvalidStateError,
+    // which is what the old version was quietly swallowing.
+    if (isListening) {
+      if (recorderRef.current) void finishRecording();
+      else recognitionRef.current?.stop();
       return;
     }
 
+    // No recogniser at all (Firefox, most in-app browsers): go straight to
+    // recording rather than telling someone to change browser.
+    const SpeechRecognition = getSpeechRecognition();
+    if (!SpeechRecognition) {
+      void recordAndTranscribe();
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
+    recognition.lang = navigator.language || "en-US";
+    // Interim results fill the box while you are still talking, which is the
+    // only feedback that the microphone is actually hearing anything.
+    recognition.interimResults = true;
+    recognition.continuous = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      setVoiceError(null);
+      setOpen(true);
+    };
+
+    recognition.onresult = (e) => {
+      let text = "";
+      for (let i = 0; i < e.results.length; i++) text += e.results[i][0].transcript;
+      setQuery(text);
+      setOpen(true);
+    };
+
+    recognition.onerror = (e) => {
+      setIsListening(false);
+      // "network" means the recogniser cannot reach Google's service — common
+      // on localhost, behind a VPN, and in browsers built without the key.
+      // Nothing the page can fix, so take the other route instead of
+      // reporting a failure the person cannot act on.
+      if (e.error === "network") {
+        void recordAndTranscribe();
+        return;
+      }
+      setVoiceError(voiceErrorMessage(e.error));
+    };
+
+    recognition.onend = () => setIsListening(false);
+
     try {
-      const recognition = new SpeechRecognition();
-      recognition.lang = "en-US";
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
-
-      recognition.onstart = () => {
-        setIsListening(true);
-      };
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      recognition.onresult = (event: any) => {
-        const transcript = event.results?.[0]?.[0]?.transcript;
-        if (transcript) {
-          setQuery(transcript);
-          setOpen(true);
-        }
-      };
-
-      recognition.onerror = () => {
-        setIsListening(false);
-      };
-
-      recognition.onend = () => {
-        setIsListening(false);
-      };
-
       recognition.start();
     } catch {
       setIsListening(false);
+      setVoiceError("Could not start the microphone. Try again.");
     }
   };
 
@@ -280,7 +412,10 @@ export default function SearchBar({ orgs, events = [] }: { orgs: Org[]; events?:
         <input
           type="text"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setVoiceError(null);
+          }}
           onFocus={() => {
             setIsFocused(true);
             setOpen(true);
@@ -292,11 +427,13 @@ export default function SearchBar({ orgs, events = [] }: { orgs: Org[]; events?:
         {/* Suitable Minimalist Microphone Icon Button */}
         <button
           type="button"
-          onClick={startVoiceSearch}
-          aria-label={isListening ? "Listening..." : "Voice search"}
-          title="Search by voice"
+          onClick={toggleVoiceSearch}
+          aria-label={transcribing ? "Transcribing" : isListening ? "Stop listening" : "Search by voice"}
+          title={isListening ? "Stop listening" : "Search by voice"}
           className={`absolute right-3 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200 ${
-            isListening
+            transcribing
+              ? "bg-white/10 text-white/70 animate-pulse"
+              : isListening
               ? "bg-red-500 text-white animate-pulse shadow-md shadow-red-500/30"
               : "text-white/60 hover:text-white hover:bg-white/10 active:scale-90"
           }`}
@@ -318,6 +455,15 @@ export default function SearchBar({ orgs, events = [] }: { orgs: Org[]; events?:
           </svg>
         </button>
       </div>
+
+      {voiceError && (
+        <p
+          role="alert"
+          className="absolute left-0 right-0 top-full z-40 mt-2 rounded-lg bg-red-950/80 px-4 py-2 text-xs text-red-200"
+        >
+          {voiceError}
+        </p>
+      )}
 
       {open && (
         <ul className="search-dropdown absolute left-0 right-0 top-full z-50 mt-2 max-h-64 overflow-y-auto rounded-lg border border-foreground/15 bg-[var(--background)] py-1.5 shadow-xl">

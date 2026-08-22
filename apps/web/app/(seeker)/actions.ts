@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/db/client";
 import { requireUser } from "@/lib/auth";
+import { transcribeSpeech } from "@/lib/ai/vision";
 import type { ClaimNotice } from "@/components/ClaimsBell";
 
 /**
@@ -94,4 +95,13 @@ export async function fetchClaimNotices(): Promise<ClaimNotice[]> {
       createdAt: c.created_at,
     };
   });
+}
+
+/** Used only when the browser's own speech recognition cannot reach its service. */
+export async function transcribeVoiceSearch(audioB64: string): Promise<{ text?: string; error?: string }> {
+  await requireUser();
+  if (!audioB64) return { error: "No audio was recorded." };
+
+  const text = await transcribeSpeech(audioB64, "audio/wav");
+  return text ? { text } : { error: "Could not make out any speech." };
 }

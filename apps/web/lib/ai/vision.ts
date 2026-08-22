@@ -347,3 +347,58 @@ async function writeFoundCache(key: string, value: FoundItemFields): Promise<voi
     // A cold cache is not an intake failure.
   }
 }
+
+
+// --- Speech ----------------------------------------------------------------
+/**
+ * Transcribes a spoken search.
+ *
+ * A fallback, not the main path: the browser's own SpeechRecognition is
+ * instant and free where it works, but Chrome routes it through Google's
+ * speech service and that connection fails on plenty of networks — reported
+ * as a bare "network" error with nothing the page can do about it. This runs
+ * the same audio through the API key the project already has.
+ *
+ * Returns null rather than throwing, like the other extractors here, so a
+ * failure leaves the search box exactly as the person left it.
+ */
+export async function transcribeSpeech(audioB64: string, mimeType = "audio/wav"): Promise<string | null> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
+
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
+        body: JSON.stringify({
+          systemInstruction: {
+            parts: [{
+              text:
+                "Transcribe the speech in this audio into plain text. It is somebody naming a " +
+                "place or an object they have lost. Return the words only — no punctuation " +
+                "beyond what a name needs, no quotes, no commentary. If there is no intelligible " +
+                "speech, return an empty string.",
+            }],
+          },
+          contents: [{ role: "user", parts: [{ inlineData: { mimeType, data: audioB64 } }] }],
+          generationConfig: { temperature: 0, thinkingConfig: { thinkingLevel: "low" } },
+        }),
+        signal: AbortSignal.timeout(15_000),
+      },
+    );
+
+    if (!res.ok) {
+      console.error(`[speech] ${MODEL} ${res.status}: ${(await res.text()).slice(0, 200)}`);
+      return null;
+    }
+
+    const body = await res.json();
+    const text = body?.candidates?.[0]?.content?.parts?.[0]?.text;
+    return typeof text === "string" && text.trim() ? text.trim() : null;
+  } catch (e) {
+    console.error("[speech]", e);
+    return null;
+  }
+}
