@@ -2,7 +2,7 @@
 
 import { useState, useRef, useTransition } from "react";
 import Link from "next/link";
-import { findMatches, type MatchItem } from "./actions";
+import { submitLostItem, type MatchItem } from "./actions";
 
 type EventContext = { id: string; name: string; description: string | null; when: string };
 
@@ -36,13 +36,17 @@ export default function DescribeItemClient({
     e.preventDefault();
     if (!description.trim()) return;
     startSearch(async () => {
-      const result = await findMatches(orgId, event?.id ?? null, description);
-      if (result.status === "ok") {
-        setMatches(result.items);
-        setMatchError(null);
-      } else {
+      const form = new FormData();
+      form.set("org_id", orgId);
+      if (event) form.set("event_id", event.id);
+      form.set("description", description);
+      const result = await submitLostItem({}, form);
+      if (result.error) {
         setMatches(null);
-        setMatchError(result.message);
+        setMatchError(result.error);
+      } else {
+        setMatches(result.matches ?? []);
+        setMatchError(null);
       }
     });
   }

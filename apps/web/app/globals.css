@@ -256,6 +256,32 @@ button:disabled {
   animation: backdrop-in 0.2s ease;
 }
 
+/* Anchored popover — a native <dialog> that sits under the control that opened
+   it instead of in the middle of the screen. Still showModal(), so Escape, the
+   focus trap and the inert page behind all still come from the browser; only
+   the placement is ours, set inline from the button's rect at open time. */
+.popover {
+  position: fixed;
+  margin: 0;
+  width: min(22rem, calc(100vw - 2rem));
+  max-width: none;
+  padding: 0;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 0.75rem;
+  background: var(--background);
+  color: var(--foreground);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+}
+
+/* No dimming: the popup is attached to its button, not a mode you enter. */
+.popover::backdrop {
+  background: transparent;
+}
+
+.popover[open] {
+  animation: modal-in 0.16s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 /* Keycap, for the hint in the drawer footer. */
 .kbd {
   border: 1px solid rgba(0, 0, 0, 0.2);
@@ -267,7 +293,8 @@ button:disabled {
 
 @media (prefers-color-scheme: dark) {
   .drawer { border-right-color: rgba(255, 255, 255, 0.12); }
-  .modal { border-color: rgba(255, 255, 255, 0.12); }
+  .modal,
+  .popover { border-color: rgba(255, 255, 255, 0.12); }
   .kbd { border-color: rgba(255, 255, 255, 0.25); }
 }
 
@@ -275,5 +302,6 @@ button:disabled {
   .drawer[open],
   .drawer[open]::backdrop,
   .modal[open],
-  .modal[open]::backdrop { animation: none; }
+  .modal[open]::backdrop,
+  .popover[open] { animation: none; }
 }

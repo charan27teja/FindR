@@ -35,6 +35,21 @@ export default async function OrgPage({ params }: { params: Promise<{ orgId: str
   // version of a page that is entirely management.
   await requireRole(orgId, ["ORG_ADMIN"]);
 
+  // What people have said they are bringing in but nobody has logged yet.
+  const { data: notices } = await supabase
+    .from("found_notices")
+    .select("id,description,contact,created_at,event_id")
+    .eq("org_id", orgId)
+    .eq("status", "OPEN")
+    .order("created_at", { ascending: false })
+    .limit(20);
+  const noticeList = (notices ?? []) as {
+    id: string;
+    description: string;
+    contact: string | null;
+    created_at: string;
+  }[];
+
   const { data: events, error: eventsError } = await supabase
     .from("events")
     .select("id,name,event_date,end_date,starts_at,ends_at,capacity,price_inr")
@@ -61,6 +76,38 @@ export default async function OrgPage({ params }: { params: Promise<{ orgId: str
           ) : null}
         </div>
       </header>
+
+      {noticeList.length > 0 ? (
+        <section className="rise mb-8" style={{ animationDelay: "90ms" }}>
+          <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-neutral-500">
+            Being brought in ({noticeList.length})
+          </h2>
+          <ul className="flex flex-col gap-2">
+            {noticeList.map((n) => (
+              <li
+                key={n.id}
+                className="flex items-start justify-between gap-3 rounded-xl border border-neutral-200 px-4 py-3 dark:border-neutral-800"
+              >
+                <span className="min-w-0">
+                  <span className="block text-sm">{n.description}</span>
+                  <span className="block text-xs text-neutral-500">
+                    {new Date(n.created_at).toLocaleString()}
+                    {n.contact ? ` · ${n.contact}` : ""}
+                  </span>
+                </span>
+                {/* Logging it is the same screen the desk always uses; this is
+                    just the shortcut from the notice to that screen. */}
+                <Link
+                  href={`/search/${orgId}?report=1`}
+                  className="shrink-0 rounded-full border border-neutral-300 px-3 py-1.5 text-xs font-medium dark:border-neutral-700"
+                >
+                  Log it
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section className="rise" style={{ animationDelay: "120ms" }}>
         <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-neutral-500">Events</h2>

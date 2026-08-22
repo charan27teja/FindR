@@ -96,3 +96,28 @@ export async function updateEvent(_prev: EventFormState, form: FormData): Promis
   revalidatePath(`/orgs/${orgId}/events/${eventId}`);
   return { saved: parsed.data.name };
 }
+
+/**
+ * The item is back with its owner. COLLECTED is the end of the claim's life —
+ * it already exists in the claim_status enum, so this closes the loop the
+ * schema always anticipated rather than inventing a status beside it.
+ */
+export async function markClaimCollected(form: FormData) {
+  const user = await requireUser();
+  const orgId = String(form.get("org_id") ?? "");
+  const eventId = String(form.get("event_id") ?? "");
+  const claimId = String(form.get("claim_id") ?? "");
+
+  const held = await rolesIn(orgId);
+  if (!held.includes("ORG_ADMIN") && !held.includes("VERIFIER")) return;
+
+  const supabase = await db();
+  await supabase
+    .from("claims")
+    .update({ status: "COLLECTED", reviewed_by: user.id })
+    .eq("id", claimId)
+    .eq("org_id", orgId);
+
+  revalidatePath(`/orgs/${orgId}/events/${eventId}`);
+  revalidatePath("/");
+}

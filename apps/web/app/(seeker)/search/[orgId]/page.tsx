@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db/client";
-import { requireUser } from "@/lib/auth";
+import { requireUser, rolesIn, STAFF_ROLES } from "@/lib/auth";
 import { eventWhen } from "../../orgs/[orgId]/when";
 import DescribeItemClient from "./DescribeItemClient";
-import ReportItemClient from "./ReportItemClient";
+import LogFoundItemClient from "./LogFoundItemClient";
+import HandInNoticeClient from "./HandInNoticeClient";
 import EventPicker from "./EventPicker";
 
 type EventRow = {
@@ -79,6 +80,7 @@ export default async function SearchOrgPage({
       }
     : null;
 
+  // "I lost something": one box to describe it in, matches listed above it.
   if (!isReport) {
     return (
       <DescribeItemClient
@@ -91,12 +93,23 @@ export default async function SearchOrgPage({
     );
   }
 
-  return (
-    <ReportItemClient
+  // "Report a lost item" means one you have found. Who you are decides what
+  // happens next: the desk logs it, everyone else carries it to the desk.
+  const isStaff = (await rolesIn(orgId)).some((r) => STAFF_ROLES.includes(r));
+
+  return isStaff ? (
+    <LogFoundItemClient
       orgId={org.id as string}
       orgName={org.name as string}
       event={chosenEventContext}
       error={error}
+    />
+  ) : (
+    <HandInNoticeClient
+      orgId={org.id as string}
+      orgName={org.name as string}
+      orgType={org.type as string}
+      event={chosenEventContext}
     />
   );
 }

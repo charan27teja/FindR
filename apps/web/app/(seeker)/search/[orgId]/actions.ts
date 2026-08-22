@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { FoundItemFields } from "@findr/shared";
 import { db } from "@/lib/db/client";
 import { serviceDb } from "@/lib/db/service";
-import { requireUser } from "@/lib/auth";
+import { requireUser, rolesIn, STAFF_ROLES } from "@/lib/auth";
 import { extractFoundItem } from "@/lib/ai/vision";
 import { assertNoPrivateFields, serialiseItemsForSeeker } from "@/lib/serializers/item";
 
@@ -124,6 +124,13 @@ function shortCode(slug: string): string {
 export async function submitFoundItem(_prev: SubmitState, form: FormData): Promise<SubmitState> {
   const user = await requireUser();
   const orgId = String(form.get("org_id") ?? "");
+
+  // Only the desk logs an item. A member of the public who finds something
+  // brings it in and files a notice; the organisers photograph and log it,
+  // which keeps one chain of custody instead of two.
+  if (!(await rolesIn(orgId)).some((r) => STAFF_ROLES.includes(r))) {
+    return { error: "Only the organisation's staff can log a found item." };
+  }
   const eventId = String(form.get("event_id") ?? "") || null;
   const photo = String(form.get("photo") ?? "");
 
@@ -332,4 +339,39 @@ export async function submitClaim(_prev: ClaimState, form: FormData): Promise<Cl
   if (error && error.code !== "23505") return { error: error.message };
 
   return { claimed: true };
+}
+
+
+// --- A finder telling the desk they have something --------------------------
+
+export type NoticeState = { error?: string; sent?: boolean };
+
+/**
+ * Records that someone is bringing an item in.
+ *
+ * Deliberately not an `items` row: nothing has been handed over yet, and a
+ * DRAFT item with no photograph would sit in the same table as real stock and
+ * have to be filtered out of every query. A notice is a different thing with a
+ * different lifetime — it is closed when the item arrives, or when it does not.
+ */
+export async function notifyFound(_prev: NoticeState, form: FormData): Promise<NoticeState> {
+  const user = await requireUser();
+  const orgId = String(form.get("org_id") ?? "");
+  const eventId = String(form.get("event_id") ?? "") || null;
+  const description = String(form.get("description") ?? "").trim();
+  const contact = String(form.get("contact") ?? "").trim() || null;
+
+  if (description.length < 3) return { error: "Say briefly what you found." };
+
+  const supabase = await db();
+  const { error } = await supabase.from("found_notices").insert({
+    org_id: orgId,
+    event_id: eventId,
+    reported_by: user.id,
+    description,
+    contact,
+  });
+  if (error) return { error: error.message };
+
+  return { sent: true };
 }
