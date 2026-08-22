@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
+import { mockSupabaseClient } from "./mock";
 
 /**
  * Bypasses RLS and the INV-1 column grant. Legitimate uses are exactly:
@@ -11,7 +12,9 @@ import { createClient } from "@supabase/supabase-js";
  * Never hand its output to a serialiser other than the ones in lib/serializers.
  * `server-only` makes importing this from a client component a build error.
  */
-export function serviceDb() {
+export function serviceDb(): ReturnType<typeof createClient> {
+  if (process.env.DEMO_MODE === "true") return mockSupabaseClient as any;
+
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!key) throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set");
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, key, {

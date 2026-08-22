@@ -22,7 +22,7 @@ export default async function OrgsPage({
     supabase.from("memberships").select("org_id").eq("user_id", user.id),
   ]);
 
-  const joined = new Set((mine ?? []).map((m) => m.org_id));
+  const joined = new Set((mine ?? []).map((m: any) => m.org_id));
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-6 px-6 py-10">
@@ -47,7 +47,7 @@ export default async function OrgsPage({
 
       {orgs?.length ? (
         <ul className="flex flex-col gap-2">
-          {orgs.map((o) => (
+          {orgs.map((o: any) => (
             <li
               key={o.id}
               className="rounded-lg border border-neutral-200 px-4 py-3 dark:border-neutral-800"
@@ -68,7 +68,7 @@ export default async function OrgsPage({
                     className="min-w-0 flex-1 rounded border border-neutral-300 bg-transparent px-3 py-2 text-sm dark:border-neutral-700"
                   />
                 )}
-                <button className="ml-auto rounded bg-accent px-4 py-2 text-sm text-white">
+                <button className="ml-auto rounded bg-accent px-4 py-2 text-sm text-background">
                   {joined.has(o.id) ? "Continue" : "Join"}
                 </button>
               </form>

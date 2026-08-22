@@ -1,7 +1,7 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
 import { Suspense, useTransition } from "react";
+import { useSearchParams } from "next/navigation";
 import { signInWithGoogle } from "./actions";
 
 function LoginForm() {
@@ -9,20 +9,20 @@ function LoginForm() {
   const [isPending, startTransition] = useTransition();
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-8 px-6">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Findr</h1>
-        <p className="mt-2 text-sm text-neutral-500">
-          Sign in to your account.
+    <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center gap-10 px-6 py-12">
+      <header>
+        <h1 className="text-4xl font-semibold tracking-[0.12em]">FindR</h1>
+        <p className="mt-3 text-sm leading-relaxed text-neutral-500">
+          Lost and found, without the guesswork. Sign in to your account.
         </p>
-      </div>
+      </header>
 
       <div className="flex flex-col gap-3">
         <button
           type="button"
           disabled={isPending}
           onClick={() => startTransition(() => signInWithGoogle(next))}
-          className="rounded-lg bg-accent px-4 py-3 font-medium text-white disabled:opacity-50 flex justify-center items-center gap-2"
+          className="flex items-center justify-center gap-2 rounded-lg bg-accent px-4 py-3 font-medium text-background transition-opacity hover:opacity-85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground disabled:opacity-50"
         >
           {isPending ? "Working…" : (
             <>

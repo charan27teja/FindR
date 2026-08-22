@@ -32,7 +32,7 @@ export default async function Home({
       {orgs !== null && (
         <ul className="flex flex-col gap-2">
           {orgs?.length ? (
-            orgs.map((o) => (
+            orgs.map((o: any) => (
               <li key={o.id}>
                 <Link
                   href={`/search/${o.id}`}
@@ -56,7 +56,7 @@ export default async function Home({
       <div className="mt-auto flex flex-col gap-3">
         <Link
           href="/orgs?intent=search"
-          className="rounded-xl bg-accent px-5 py-4 text-white"
+          className="rounded-xl bg-accent px-5 py-4 text-background"
         >
           <span className="block text-lg font-medium">I lost something</span>
           <span className="block text-sm opacity-80">

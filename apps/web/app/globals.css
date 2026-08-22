@@ -1,18 +1,18 @@
 @import "tailwindcss";
 
-/* §12 — monochrome, with exactly ONE reserved accent.
-   The accent marks state and the primary action. Never decoration. */
+/* §12 — monochrome. Black and white only: the "accent" is simply the
+   foreground, so a primary button is an inversion of the page rather than
+   a hue. Reintroduce a real accent here when the palette is decided. */
 :root {
   --background: #ffffff;
-  --foreground: #171717;
-  --accent: #1d4ed8;
+  --foreground: #000000;
+  --accent: var(--foreground);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --accent: #3b82f6;
+    --background: #000000;
+    --foreground: #ffffff;
   }
 }
 
@@ -22,6 +22,12 @@
   --color-accent: var(--accent);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --animate-flash: flash 0.3s ease-out forwards;
+
+  @keyframes flash {
+    0% { opacity: 1; }
+    100% { opacity: 0; visibility: hidden; }
+  }
 }
 
 body {
@@ -29,3 +35,5 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
 }
+
+
