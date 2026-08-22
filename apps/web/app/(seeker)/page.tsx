@@ -52,6 +52,13 @@ export default async function Home() {
   // in the org list the search bar needs.
   const places = orgList.filter((o) => o.type === "PUBLIC").slice(0, 6);
 
+  // Whether to show the bell is decided on the roles themselves, not on
+  // `workspaces` below. That map skips any row whose `orgs` embed came back
+  // empty, so a single failed join hides the bell from someone who plainly is
+  // staff — and it counts a plain SEEKER membership, who has no queue at all.
+  const STAFF = ["ORG_ADMIN", "VERIFIER", "INTAKE_STAFF"];
+  const isStaff = ((memberships ?? []) as { role: string }[]).some((m) => STAFF.includes(m.role));
+
   // memberships is one row per role, so collapse to one card per org.
   const workspaces = new Map<string, { org: Org; roles: string[] }>();
   for (const m of (memberships ?? []) as { role: string; orgs: Org | null }[]) {
@@ -87,7 +94,7 @@ export default async function Home() {
         <div className="flex shrink-0 items-center gap-1">
         {/* Only staff have a queue; for everyone else the bell would never
             do anything, so it is not drawn at all. */}
-        {workspaces.size > 0 && <ClaimsBell claims={notices} />}
+        {isStaff && <ClaimsBell claims={notices} />}
         <Link
           href="/profile"
           aria-label="Profile"
