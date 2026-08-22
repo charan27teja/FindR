@@ -1,77 +1,181 @@
 import Link from "next/link";
 import { db } from "@/lib/db/client";
 import { requireUser } from "@/lib/auth";
+import SearchBar from "./SearchBar";
 
-export default async function Home({
-  searchParams,
-}: {
-  searchParams: Promise<{ q?: string }>;
-}) {
-  await requireUser();
-  const q = (await searchParams).q?.trim() ?? "";
+type Org = { id: string; name: string; slug: string; type: string };
 
-  // §12 — the home search bar searches ORGANISATIONS, not items.
+/** Everything routes through /orgs — it is the only screen that can both
+ *  join you to an org and hand you off to the right intent. */
+const orgHref = (o: Org, intent = "search") =>
+  `/orgs?intent=${intent}&q=${encodeURIComponent(o.name)}`;
+
+export default async function Home() {
+  const user = await requireUser();
+
+  // §12 — pre-fetch all orgs so the search bar can show them on focus.
   const supabase = await db();
-  const { data: orgs } = q
-    ? await supabase.from("orgs").select("id,name,slug,type").ilike("name", `%${q}%`).limit(8)
-    : { data: null };
+  const [{ data: orgs }, { data: memberships }] = await Promise.all([
+    supabase.from("orgs").select("id,name,slug,type").order("name").limit(50),
+    supabase
+      .from("memberships")
+      .select("role,orgs(id,name,slug,type)")
+      .eq("user_id", user.id),
+  ]);
+
+  // Public venues double as quick links — no extra query, they are already
+  // in the org list the search bar needs.
+  const places = (orgs ?? []).filter((o) => o.type === "PUBLIC").slice(0, 6);
+
+  // memberships is one row per role, so collapse to one card per org.
+  const workspaces = new Map<string, { org: Org; roles: string[] }>();
+  for (const m of memberships ?? []) {
+    const org = m.orgs as unknown as Org | null;
+    if (!org) continue;
+    const entry = workspaces.get(org.id) ?? { org, roles: [] };
+    entry.roles.push(m.role);
+    workspaces.set(org.id, entry);
+  }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-8 px-6 py-12">
-      <h1 className="text-3xl font-semibold tracking-tight">Findr</h1>
+    <main className="mx-auto flex min-h-dvh max-w-2xl flex-col px-6">
+      {/* Top bar: logo left, profile right */}
+      <header className="rise flex items-center justify-between py-5">
+        <h1 className="text-2xl font-semibold tracking-tight">Findr</h1>
+        <Link
+          href="/profile"
+          aria-label="Profile"
+          className="group flex shrink-0 items-center gap-1.5 rounded-full p-1.5 transition-transform duration-150 hover:scale-110 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="8" r="4" />
+            <path d="M20 21a8 8 0 0 0-16 0" />
+          </svg>
+          <span className="max-w-0 overflow-hidden text-sm font-medium text-foreground opacity-0 transition-all duration-200 group-hover:max-w-24 group-hover:opacity-100">
+            My Account
+          </span>
+        </Link>
+      </header>
 
-      <form className="flex flex-col gap-2">
-        <input
-          name="q"
-          defaultValue={q}
-          placeholder="Search stations, campuses, events"
-          className="w-full rounded-lg border border-neutral-300 bg-transparent px-4 py-3 outline-none focus:border-neutral-900 dark:border-neutral-700 dark:focus:border-neutral-100"
-        />
-      </form>
+      {/* Search bar below header */}
+      <div className="rise" style={{ animationDelay: "60ms" }}>
+        <SearchBar orgs={orgs ?? []} />
+      </div>
 
-      {orgs !== null && (
-        <ul className="flex flex-col gap-2">
-          {orgs?.length ? (
-            orgs.map((o) => (
-              <li key={o.id}>
-                <Link
-                  href={`/search/${o.id}`}
-                  className="block rounded-lg border border-neutral-200 px-4 py-3 dark:border-neutral-800"
+      <div className="flex flex-1 flex-col justify-center gap-8 py-10">
+        {/* Public venues — one tap to the busiest lost-and-found desks */}
+        {places.length > 0 && (
+          <section>
+            <h2
+              className="rise mb-3 text-xs font-medium uppercase tracking-wider text-neutral-500"
+              style={{ animationDelay: "120ms" }}
+            >
+              Popular nearby
+            </h2>
+            <ul className="flex flex-wrap gap-2">
+              {places.map((o, i) => (
+                <li
+                  key={o.id}
+                  className="rise"
+                  style={{ animationDelay: `${160 + i * 50}ms` }}
                 >
-                  <span className="font-medium">{o.name}</span>
-                  <span className="block text-xs uppercase tracking-wide text-neutral-500">
-                    {o.type.toLowerCase().replace("_", " ")}
-                  </span>
-                </Link>
-              </li>
-            ))
-          ) : (
-            <li className="rounded-lg border border-dashed border-neutral-300 px-4 py-6 text-center text-sm text-neutral-500 dark:border-neutral-700">
-              No organisation matches “{q}”. Ask the desk for their join code.
-            </li>
-          )}
-        </ul>
-      )}
+                  <Link
+                    href={orgHref(o)}
+                    className="chip flex items-center gap-2 rounded-full border border-neutral-300 px-4 py-2 text-sm dark:border-neutral-700"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-neutral-400">
+                      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+                      <circle cx="12" cy="10" r="3" />
+                    </svg>
+                    {o.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
-      <div className="mt-auto flex flex-col gap-3">
-        <Link
-          href="/orgs?intent=search"
-          className="rounded-xl bg-accent px-5 py-4 text-background"
-        >
-          <span className="block text-lg font-medium">I lost something</span>
-          <span className="block text-sm opacity-80">
-            Check if it has already been handed in.
-          </span>
-        </Link>
-        <Link
-          href="/orgs?intent=report"
-          className="rounded-xl border border-neutral-300 px-5 py-4 dark:border-neutral-700"
-        >
-          <span className="block text-lg font-medium">Report a lost item</span>
-          <span className="block text-sm text-neutral-500">
-            Tell us what you lost and we will notify you when it turns up.
-          </span>
-        </Link>
+        {/* Center CTA buttons */}
+        <div className="flex flex-row items-stretch gap-4">
+          <Link
+            href="/orgs?intent=search"
+            className="cta-card cta-primary rise flex-1 rounded-xl bg-accent px-5 py-4 text-center text-background"
+            style={{ animationDelay: "480ms" }}
+          >
+            {/* package-search — is my thing on their shelf? */}
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="cta-icon mx-auto mb-3">
+              <path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0" />
+              <path d="M16.5 9.4 7.5 4.21" />
+              <path d="m3.3 7 8.7 5 8.7-5" />
+              <path d="M12 22V12" />
+              <circle cx="18.5" cy="15.5" r="2.5" />
+              <path d="M20.3 17.3 22 19" />
+            </svg>
+            <span className="block text-lg font-medium">I lost something</span>
+            <span className="block text-sm opacity-80">
+              Check if it has been handed in.
+            </span>
+          </Link>
+          <Link
+            href="/orgs?intent=report"
+            className="cta-card cta-outline rise flex-1 rounded-xl border border-neutral-300 px-5 py-4 text-center dark:border-neutral-700"
+            style={{ animationDelay: "560ms" }}
+          >
+            {/* bell — we ping you the moment it is handed in */}
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="cta-icon mx-auto mb-3">
+              <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+              <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+            </svg>
+            <span className="block text-lg font-medium">Report a lost item</span>
+            <span className="block text-sm text-neutral-500">
+              We&rsquo;ll notify you when it turns up.
+            </span>
+          </Link>
+        </div>
+
+        {/* Workspaces this user actually belongs to */}
+        <section>
+          <h2
+            className="rise mb-3 text-xs font-medium uppercase tracking-wider text-neutral-500"
+            style={{ animationDelay: "640ms" }}
+          >
+            Your workspaces
+          </h2>
+          {workspaces.size > 0 ? (
+            <ul className="flex flex-col gap-2">
+              {[...workspaces.values()].map(({ org, roles }, i) => (
+                <li
+                  key={org.id}
+                  className="rise"
+                  style={{ animationDelay: `${690 + i * 60}ms` }}
+                >
+                  <Link
+                    href={orgHref(org)}
+                    className="chip flex items-center justify-between gap-3 rounded-xl border border-neutral-200 px-4 py-3 dark:border-neutral-800"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium">{org.name}</span>
+                      <span className="block text-xs uppercase tracking-wide text-neutral-500">
+                        {roles.map((r) => r.toLowerCase().replace("_", " ")).join(" · ")}
+                      </span>
+                    </span>
+                    <span aria-hidden className="text-neutral-400">→</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p
+              className="rise rounded-xl border border-dashed border-neutral-300 px-4 py-6 text-center text-sm text-neutral-500 dark:border-neutral-700"
+              style={{ animationDelay: "690ms" }}
+            >
+              You have not joined any organisation yet.{" "}
+              <Link href="/orgs" className="underline underline-offset-2">
+                Browse organisations
+              </Link>
+            </p>
+          )}
+        </section>
       </div>
     </main>
   );
