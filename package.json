@@ -1,0 +1,15 @@
+{
+  "name": "findr",
+  "private": true,
+  "workspaces": [
+    "apps/web",
+    "packages/shared"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w web",
+    "build": "npm run build -w web",
+    "test": "node --test \"apps/web/**/*.test.ts\"",
+    "lint": "npm run lint -w web",
+    "typecheck": "tsc --noEmit -p apps/web/tsconfig.json"
+  }
+}
