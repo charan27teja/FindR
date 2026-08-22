@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db/client";
 import { requireUser } from "@/lib/auth";
 import { assertNoPrivateFields, serialiseItemForSeeker } from "@/lib/serializers/item";
+import { serviceDb, signedUrl } from "@/lib/db/service";
 import ClaimButton from "./ClaimButton";
 
 export default async function ItemPage({
@@ -46,6 +47,23 @@ export default async function ItemPage({
   const safe = serialiseItemForSeeker(item as Record<string, unknown>);
   assertNoPrivateFields(safe);
 
+  // The photo. Read with the service role because image_full_path is a private
+  // column — the grant does not expose it, so the RLS client above genuinely
+  // cannot see it. The redacted crop is preferred when one exists; nothing
+  // produces one yet, so in practice this is the full photograph.
+  //
+  // Only the signed URL crosses into the page. The storage path itself never
+  // leaves this function, so nothing downstream can mint its own link, and the
+  // one we hand out expires in fifteen minutes.
+  const { data: media } = await serviceDb()
+    .from("items")
+    .select("image_redacted_path,image_full_path")
+    .eq("id", itemId)
+    .single();
+  const imageUrl = await signedUrl(
+    (media?.image_redacted_path as string | null) ?? (media?.image_full_path as string | null) ?? null,
+  );
+
   // Has this person already claimed it? claims_own means this returns their
   // own row or nothing — never anyone else's (INV-5).
   const { data: existing } = await supabase
@@ -87,6 +105,17 @@ export default async function ItemPage({
       </header>
 
       <div className="flex-1 overflow-y-auto px-6 pb-8">
+        {imageUrl ? (
+          <div className="mb-5 aspect-[4/3] w-full overflow-hidden rounded-2xl border border-white/15 bg-[#1A1A1A]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={imageUrl}
+              alt={safe.public_description ? String(safe.public_description) : "The found item"}
+              className="h-full w-full object-cover"
+            />
+          </div>
+        ) : null}
+
         <dl className="flex flex-col">
           {rows
             .filter(([, v]) => v)
@@ -98,12 +127,9 @@ export default async function ItemPage({
             ))}
         </dl>
 
-        {/* INV-3: the desk keeps the photograph. Someone who can see it could
-            answer the ownership questions from it, which is the one thing a
-            claim has to prove without help. */}
         <p className="mt-4 text-xs leading-relaxed text-[#777777]">
-          The photograph stays with the desk. If this is yours, claim it and you
-          will be asked a few questions only its owner could answer.
+          If this is yours, claim it and the desk will confirm a few details
+          with you before handing it over.
         </p>
 
         <div className="mt-6">

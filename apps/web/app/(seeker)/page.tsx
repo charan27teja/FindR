@@ -3,7 +3,8 @@ import { db } from "@/lib/db/client";
 import { requireUser } from "@/lib/auth";
 import SearchBar from "./SearchBar";
 import DashboardDrawer from "@/components/DashboardDrawer";
-import ClaimsBell, { type ClaimNotice } from "@/components/ClaimsBell";
+import ClaimsBell from "@/components/ClaimsBell";
+import { fetchClaimNotices } from "./actions";
 import { OrgIcon } from "@/components/OrgIcon";
 
 type Org = { id: string; name: string; slug: string; type: string };
@@ -73,54 +74,7 @@ export default async function Home() {
   ];
   const randomGreeting = greetings[Math.floor(Math.random() * greetings.length)];
 
-  const { data: claimRows } = await supabase
-    .from("claims")
-    .select("id,item_id,org_id,user_id,status,created_at")
-    .neq("user_id", user.id)
-    .neq("status", "COLLECTED")
-    .neq("status", "REJECTED")
-    .order("created_at", { ascending: false })
-    .limit(20);
-  const openClaims = (claimRows ?? []) as {
-    id: string;
-    item_id: string;
-    org_id: string;
-    created_at: string;
-  }[];
-
-  let notices: ClaimNotice[] = [];
-  if (openClaims.length > 0) {
-    const [{ data: claimItems }, { data: claimOrgs }] = await Promise.all([
-      supabase
-        .from("items")
-        .select("id,short_code,public_description,category,event_id")
-        .in("id", openClaims.map((c) => c.item_id)),
-      supabase.from("orgs").select("id,name").in("id", [...new Set(openClaims.map((c) => c.org_id))]),
-    ]);
-    const itemById = new Map(
-      ((claimItems ?? []) as Record<string, string | null>[]).map((i) => [String(i.id), i]),
-    );
-    const orgNameById = new Map(
-      ((claimOrgs ?? []) as { id: string; name: string }[]).map((o) => [o.id, o.name]),
-    );
-    const eventNameById = new Map(eventList.map((e) => [e.id, e.name]));
-
-    notices = openClaims.map((c) => {
-      const item = itemById.get(c.item_id);
-      const eventId = item?.event_id ?? null;
-      return {
-        id: c.id,
-        itemLabel: item?.public_description ?? item?.category ?? "Item",
-        shortCode: item?.short_code ?? "",
-        orgName: orgNameById.get(c.org_id) ?? "",
-        eventName: eventId ? eventNameById.get(eventId) ?? null : null,
-        // An item logged at a public venue has no event, so the org console is
-        // the closest place that can act on it.
-        href: eventId ? `/orgs/${c.org_id}/events/${eventId}` : `/orgs/${c.org_id}`,
-        createdAt: c.created_at,
-      };
-    });
-  }
+  const notices = await fetchClaimNotices();
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-2xl flex-col px-6">

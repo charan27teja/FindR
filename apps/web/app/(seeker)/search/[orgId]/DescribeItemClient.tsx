@@ -32,9 +32,8 @@ export default function DescribeItemClient({
   // Searching on submit rather than on every keystroke: a half-typed
   // description matches the wrong things, and the arrow button is already the
   // "I am done describing it" gesture.
-  function search(e: React.FormEvent) {
-    e.preventDefault();
-    if (!description.trim()) return;
+  function runSearch() {
+    if (!description.trim() || searching) return;
     startSearch(async () => {
       const form = new FormData();
       form.set("org_id", orgId);
@@ -181,13 +180,26 @@ export default function DescribeItemClient({
               What did you lose?
             </p>
 
-            <form id="lost-item-form" onSubmit={search} className="w-full relative">
+            <form
+              id="lost-item-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                runSearch();
+              }}
+              className="w-full relative"
+            >
               
               <textarea
                 name="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Describe what you lost — the more specific, the better."
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                    e.preventDefault();
+                    runSearch();
+                  }
+                }}
+                placeholder="Describe what you lost — the more specific, the better. Enter to search."
                 rows={5}
                 className="w-full rounded-2xl bg-[#1A1A1A] border border-white/10 px-6 py-5 text-[15px] text-white placeholder-[#AAAAAA] outline-none resize-none leading-relaxed transition-colors duration-200 focus:border-white hover:border-white/30 pr-16"
               />

@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { fetchClaimNotices } from "@/app/(seeker)/actions";
 
 export type ClaimNotice = {
   id: string;
@@ -19,9 +20,109 @@ export type ClaimNotice = {
  * to watch. The bell is a pointer, not a workbench: it says something is
  * waiting and takes you to the event page, which is where claims are handled.
  */
-export default function ClaimsBell({ claims }: { claims: ClaimNotice[] }) {
+/**
+ * Claims this browser has already fired a desktop notification for.
+ *
+ * It records what has been *announced*, not what has been dealt with. A claim
+ * stays in the badge and the list until an organiser actually settles it; this
+ * only stops the same claim toasting twice on the same machine. Being per
+ * browser is the point: every admin of an org gets told once, wherever they
+ * are signed in.
+ */
+const SEEN_KEY = "findr:announced-claims";
+
+function readSeen(): Set<string> {
+  try {
+    const raw = JSON.parse(localStorage.getItem(SEEN_KEY) ?? "[]");
+    return new Set(Array.isArray(raw) ? raw.map(String) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function writeSeen(ids: Set<string>) {
+  try {
+    // Capped: this only exists to avoid announcing the same claim twice, and
+    // an unbounded list in localStorage would grow for the life of the browser.
+    localStorage.setItem(SEEN_KEY, JSON.stringify([...ids].slice(-200)));
+  } catch {
+    // Storage off. Worst case is a repeated desktop notification.
+  }
+}
+
+export default function ClaimsBell({ claims: initial }: { claims: ClaimNotice[] }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const [claims, setClaims] = useState<ClaimNotice[]>(initial);
+
+  /**
+   * Fires a desktop notification for claims this browser has not announced
+   * before. Everything about it is optional: an unsupported browser, a denied
+   * permission or a blocked construction all fall through to the badge, which
+   * is the notification that always works.
+   */
+  const announce = useCallback((incoming: ClaimNotice[]) => {
+    if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+    const seen = readSeen();
+    const fresh = incoming.filter((c) => !seen.has(c.id));
+    if (fresh.length === 0) return;
+
+    try {
+      if (fresh.length === 1) {
+        const c = fresh[0];
+        new Notification("New claim", {
+          body: `${c.itemLabel}${c.orgName ? ` · ${c.orgName}` : ""}`,
+          tag: `claim-${c.id}`,
+        });
+      } else {
+        // One notification for a batch: waking up to nine separate toasts
+        // after an hour away is noise, not news.
+        new Notification(`${fresh.length} new claims`, {
+          body: "Someone has claimed items you look after.",
+          tag: "claims-batch",
+        });
+      }
+    } catch {
+      // Some browsers throw when constructing outside a service worker.
+    }
+    for (const c of fresh) seen.add(c.id);
+    writeSeen(seen);
+  }, []);
+
+  // Announce what was already waiting when the page opened, not just what
+  // turns up while it is watched. Anyone who has not been told about a claim
+  // yet gets told now; the announced set keeps it to once per browser, so this
+  // does not re-toast on every reload.
+  useEffect(() => {
+    announce(initial);
+  }, [initial, announce]);
+
+  // No realtime subscription: this needs no replication setup and no socket,
+  // and a minute of latency on a lost-and-found desk is not worth either.
+  // Polling pauses while the tab is hidden and catches up when it comes back.
+  useEffect(() => {
+    let cancelled = false;
+
+    async function refresh() {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const next = await fetchClaimNotices();
+        if (cancelled) return;
+        setClaims(next);
+        announce(next);
+      } catch {
+        // Offline or signed out; the next tick tries again.
+      }
+    }
+
+    const timer = setInterval(refresh, 60_000);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [announce]);
 
   /**
    * A modal dialog is in the top layer, so the browser centres it and no
@@ -33,6 +134,15 @@ export default function ClaimsBell({ claims }: { claims: ClaimNotice[] }) {
     const dialog = dialogRef.current;
     const button = buttonRef.current;
     if (!dialog || !button) return;
+    // Asked for on a click, because that is the user gesture browsers require
+    // before they will even show the permission prompt.
+    if (typeof Notification !== "undefined" && Notification.permission === "default") {
+      void Notification.requestPermission().then((result) => {
+        // Whatever is already waiting is news to them the moment they say yes.
+        if (result === "granted") announce(claims);
+      });
+    }
+
     const r = button.getBoundingClientRect();
     dialog.style.top = `${r.bottom + 8}px`;
     dialog.style.right = `${Math.max(8, window.innerWidth - r.right)}px`;
