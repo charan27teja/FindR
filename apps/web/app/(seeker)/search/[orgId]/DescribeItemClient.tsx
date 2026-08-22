@@ -3,6 +3,9 @@
 import { useState, useRef, useTransition } from "react";
 import Link from "next/link";
 import { findMatches, type MatchItem } from "./actions";
+import BouncingDots from "@/components/BouncingDots";
+import SearchingAnimation from "@/components/SearchingAnimation";
+import ScanningImagePlaceholder from "@/components/ScanningImagePlaceholder";
 
 type EventContext = { id: string; name: string; description: string | null; when: string };
 
@@ -188,37 +191,37 @@ export default function DescribeItemClient({
                 className="w-full rounded-2xl bg-[#1A1A1A] border border-white/10 px-6 py-5 text-[15px] text-white placeholder-[#AAAAAA] outline-none resize-none leading-relaxed transition-colors duration-200 focus:border-white hover:border-white/30 pr-16"
               />
 
-              {/* Arrow pointing right circular button inside the describe box at bottom right */}
+              {/* Arrow / Bouncing Dots button inside the describe box at bottom right */}
               <button
                 type="submit"
                 disabled={!description.trim() || searching}
                 aria-label="Search for matches"
                 className="absolute bottom-4 right-4 flex h-10 w-10 items-center justify-center rounded-full bg-white text-black transition-all hover:bg-neutral-200 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M5 12h14" />
-                  <path d="m12 5 7 7-7 7" />
-                </svg>
+                {searching ? (
+                  <BouncingDots className="h-1.5 w-1.5 bg-black" />
+                ) : (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M5 12h14" />
+                    <path d="m12 5 7 7-7 7" />
+                  </svg>
+                )}
               </button>
             </form>
 
             {searching ? (
-              <div className="mt-4 flex items-center justify-center gap-3" role="status">
-                <span
-                  aria-hidden
-                  className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white"
-                />
-                <span className="text-xs text-[#AAAAAA]">Checking what has been handed in…</span>
+              <div className="mt-2 w-full">
+                <SearchingAnimation text="Searching for matching lost items…" />
               </div>
             ) : (
               <p className="mt-3 max-w-[320px] text-center text-xs leading-relaxed text-[#555555]">
@@ -267,25 +270,7 @@ export default function DescribeItemClient({
                 </button>
               </div>
             ) : (
-              <div className="w-full aspect-[4/3] max-h-[40vh] rounded-2xl bg-[#1A1A1A] border border-dashed border-[#555555] flex flex-col items-center justify-center p-6 text-[#AAAAAA]">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="48"
-                  height="48"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="mb-4 text-white"
-                >
-                  <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-                  <circle cx="9" cy="9" r="2" />
-                  <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
-                </svg>
-                <span className="text-sm font-medium">No image</span>
-              </div>
+              <ScanningImagePlaceholder label="No image" />
             )}
           </>
         )}

@@ -10,6 +10,9 @@ import {
   type ClaimState,
   type MatchItem,
 } from "./actions";
+import BouncingDots from "@/components/BouncingDots";
+import SearchingAnimation from "@/components/SearchingAnimation";
+import ScanningImagePlaceholder from "@/components/ScanningImagePlaceholder";
 
 type EventContext = { id: string; name: string; description: string | null; when: string };
 
@@ -224,14 +227,7 @@ export default function ReportItemClient({
                 <img src={photo} alt="Photo of the lost item" className="h-full w-full object-cover" />
               </div>
             ) : (
-              <div className="flex aspect-[4/3] max-h-[40vh] w-full flex-col items-center justify-center rounded-2xl border border-dashed border-[#555555] bg-[#1A1A1A] p-6 text-[#AAAAAA]">
-                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className="mb-4 text-white">
-                  <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z" />
-                  <circle cx="12" cy="13" r="3" />
-                </svg>
-                <span className="text-sm font-medium">Add a photo (optional)</span>
-                <span className="mt-1 text-xs text-[#777777]">A photo from your gallery helps us match faster.</span>
-              </div>
+              <ScanningImagePlaceholder label="Add a photo (optional)" />
             )}
           </div>
 
@@ -282,15 +278,9 @@ export default function ReportItemClient({
 
       {/* ── Step 2: Processing (AI analysis) ──────────────────────── */}
       {step === "processing" && (
-        <div className="flex flex-1 flex-col items-center justify-center gap-4 px-8 text-center">
-          <span
-            aria-hidden
-            className="h-10 w-10 animate-spin rounded-full border-2 border-white/20 border-t-white"
-          />
-          <p role="status" className="text-[15px] font-medium">
-            Reading the photo…
-          </p>
-          <p className="text-xs text-[#777777]">
+        <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
+          <SearchingAnimation text="Reading the photo with AI…" />
+          <p className="text-xs text-[#777777] mt-2">
             Working out what it is so you do not have to type it.
           </p>
         </div>
@@ -387,9 +377,9 @@ export default function ReportItemClient({
           <button
             type="submit"
             disabled={submitting}
-            className="mt-auto w-full rounded-full bg-white py-3.5 text-center text-sm font-semibold text-black transition-all duration-150 hover:bg-neutral-200 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-30"
+            className="mt-auto w-full rounded-full bg-white py-3.5 text-center text-sm font-semibold text-black transition-all duration-150 hover:bg-neutral-200 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-30 flex items-center justify-center min-h-[48px]"
           >
-            {submitting ? "Submitting…" : "Submit report"}
+            {submitting ? <BouncingDots className="h-2 w-2 bg-black" /> : "Submit report"}
           </button>
         </form>
       )}

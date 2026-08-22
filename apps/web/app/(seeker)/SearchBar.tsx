@@ -53,6 +53,70 @@ export default function SearchBar({ orgs, events = [] }: { orgs: Org[]; events?:
     };
   }, [chosen]);
 
+  const [isFocused, setIsFocused] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+
+  const PLACEHOLDERS = [
+    "Search for a lost item",
+    "Try 'black wallet' or 'iPhone 13'",
+    "Search organisation",
+    "Search by item name or category",
+  ];
+
+  useEffect(() => {
+    if (isFocused || query || isListening) return;
+
+    const interval = setInterval(() => {
+      setPlaceholderIndex((prev) => (prev + 1) % PLACEHOLDERS.length);
+    }, 3400);
+
+    return () => clearInterval(interval);
+  }, [isFocused, query, isListening, PLACEHOLDERS.length]);
+
+  const startVoiceSearch = () => {
+    if (typeof window === "undefined") return;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Voice search is not supported in this browser.");
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = "en-US";
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      recognition.onresult = (event: any) => {
+        const transcript = event.results?.[0]?.[0]?.transcript;
+        if (transcript) {
+          setQuery(transcript);
+          setOpen(true);
+        }
+      };
+
+      recognition.onerror = () => {
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.start();
+    } catch {
+      setIsListening(false);
+    }
+  };
+
   const q = query.trim().toLowerCase();
 
   const eventsOf = (orgId: string) => events.filter((e) => e.org_id === orgId);
@@ -171,32 +235,88 @@ export default function SearchBar({ orgs, events = [] }: { orgs: Org[]; events?:
     );
   }
 
+  const currentPlaceholder = PLACEHOLDERS[placeholderIndex];
+  const nextPlaceholder = PLACEHOLDERS[(placeholderIndex + 1) % PLACEHOLDERS.length];
+
   return (
     <div ref={wrapperRef} className="relative z-50">
-      <div className="relative">
+      <div className="relative flex items-center rounded-full bg-[#1A1A1A] border border-white/10 focus-within:border-white/30 transition-colors">
+        {/* White magnifying glass icon */}
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
+          width="18"
+          height="18"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+          className="pointer-events-none absolute left-4.5 top-1/2 -translate-y-1/2 text-white"
         >
           <circle cx="11" cy="11" r="8" />
           <path d="m21 21-4.3-4.3" />
         </svg>
+
+        {/* Smooth vertical slide-up placeholder ticker */}
+        {!query && !isFocused && !isListening && (
+          <div className="pointer-events-none absolute left-12 right-12 top-1/2 -translate-y-1/2 overflow-hidden h-6 text-[14px] text-[#AAAAAA] select-none flex items-center">
+            <span
+              key={placeholderIndex}
+              className="block truncate animate-placeholder-slide"
+            >
+              {PLACEHOLDERS[placeholderIndex]}
+            </span>
+          </div>
+        )}
+
+        {isListening && (
+          <div className="pointer-events-none absolute left-12 right-12 top-1/2 -translate-y-1/2 overflow-hidden h-6 text-[14px] text-red-400 select-none flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-red-500 animate-ping" />
+            <span className="font-medium animate-pulse">Listening… speak now</span>
+          </div>
+        )}
+
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          onFocus={() => setOpen(true)}
-          placeholder="Search stations, campuses, events"
-          className="w-full rounded-lg border border-foreground/20 bg-transparent py-2.5 pl-9 pr-4 text-sm outline-none focus:border-foreground"
+          onFocus={() => {
+            setIsFocused(true);
+            setOpen(true);
+          }}
+          onBlur={() => setIsFocused(false)}
+          className="w-full rounded-full bg-transparent py-3.5 pl-12 pr-12 text-sm text-white outline-none border-0"
         />
+
+        {/* Suitable Minimalist Microphone Icon Button */}
+        <button
+          type="button"
+          onClick={startVoiceSearch}
+          aria-label={isListening ? "Listening..." : "Voice search"}
+          title="Search by voice"
+          className={`absolute right-3 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200 ${
+            isListening
+              ? "bg-red-500 text-white animate-pulse shadow-md shadow-red-500/30"
+              : "text-white/60 hover:text-white hover:bg-white/10 active:scale-90"
+          }`}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+            <line x1="12" x2="12" y1="19" y2="22" />
+          </svg>
+        </button>
       </div>
 
       {open && (
