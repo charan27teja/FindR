@@ -1,7 +1,88 @@
 'use client';
 
 import React, { useActionState, useState } from 'react';
-import { createPublicOrg, deletePublicOrg } from './actions';
+import {
+  createPublicOrg,
+  deletePublicOrg,
+  addPublicOrgAdmin,
+  removePublicOrgAdmin,
+  type OrganiserState,
+} from './actions';
+
+type Organiser = { userId: string; email: string };
+
+/**
+ * Who runs one public desk. Its own component so each row keeps its own form
+ * state — one shared useActionState would put an error from adding to Charminar
+ * underneath every other venue in the list.
+ */
+function Organisers({ orgId, organisers }: { orgId: string; organisers: Organiser[] }) {
+  const [state, action, pending] = useActionState<OrganiserState, FormData>(addPublicOrgAdmin, {});
+  const [removing, setRemoving] = useState<string | null>(null);
+
+  return (
+    <div className="mt-3 border-t border-gray-200 dark:border-gray-800 pt-3">
+      <p className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+        Organisers
+      </p>
+
+      {organisers.length > 0 ? (
+        <ul className="mt-2 flex flex-wrap gap-2">
+          {organisers.map((o) => (
+            <li
+              key={o.userId}
+              className="flex items-center gap-2 rounded-full bg-gray-100 dark:bg-[#222] px-3 py-1 text-xs text-gray-700 dark:text-gray-300"
+            >
+              <span className="truncate">{o.email}</span>
+              <button
+                type="button"
+                aria-label={`Remove ${o.email}`}
+                disabled={removing === o.userId}
+                onClick={async () => {
+                  setRemoving(o.userId);
+                  await removePublicOrgAdmin(orgId, o.userId);
+                  setRemoving(null);
+                }}
+                className="text-gray-400 hover:text-red-500 disabled:opacity-40"
+              >
+                &#10005;
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+          Nobody yet — this desk has no console access.
+        </p>
+      )}
+
+      <form action={action} className="mt-3 flex flex-col gap-2 sm:flex-row">
+        <input type="hidden" name="org_id" value={orgId} />
+        <input
+          type="email"
+          name="email"
+          required
+          placeholder="organiser@example.com"
+          className="min-w-0 flex-1 rounded-md border-0 px-3 py-1.5 text-sm text-gray-900 dark:text-white bg-white dark:bg-[#222] ring-1 ring-inset ring-gray-300 dark:ring-gray-700 focus:ring-2 focus:ring-inset focus:ring-indigo-600 outline-none"
+        />
+        <button
+          type="submit"
+          disabled={pending}
+          className="rounded-md bg-gray-900 dark:bg-white px-3 py-1.5 text-sm font-semibold text-white dark:text-black hover:opacity-90 disabled:opacity-50"
+        >
+          {pending ? 'Adding…' : 'Add organiser'}
+        </button>
+      </form>
+
+      {state.error && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{state.error}</p>}
+      {state.added && (
+        <p className="mt-2 text-xs text-green-600 dark:text-green-400">
+          {state.added} can now open this desk&rsquo;s console.
+        </p>
+      )}
+    </div>
+  );
+}
 import { OrgIcon } from '@/components/OrgIcon';
 
 export interface Org {
@@ -12,7 +93,13 @@ export interface Org {
   created_at: string;
 }
 
-export function AdminClientPage({ initialOrgs }: { initialOrgs: Org[] }) {
+export function AdminClientPage({
+  initialOrgs,
+  organisersByOrg = {},
+}: {
+  initialOrgs: Org[];
+  organisersByOrg?: Record<string, Organiser[]>;
+}) {
   const [state, formAction, isPending] = useActionState(createPublicOrg, null);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
@@ -93,7 +180,8 @@ export function AdminClientPage({ initialOrgs }: { initialOrgs: Org[] }) {
             </li>
           ) : (
             initialOrgs.map((org) => (
-              <li key={org.id} className="flex items-center justify-between gap-x-6 px-4 py-5 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] sm:px-6 transition-colors">
+              <li key={org.id} className="px-4 py-5 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] sm:px-6 transition-colors">
+                <div className="flex items-center justify-between gap-x-6">
                 <div className="flex min-w-0 gap-x-4 items-center">
                   <div className="flex h-10 w-10 flex-none items-center justify-center rounded-lg bg-neutral-100 dark:bg-neutral-800">
                     <OrgIcon name={org.name} className="h-5 w-5 text-neutral-500" />
@@ -123,6 +211,9 @@ export function AdminClientPage({ initialOrgs }: { initialOrgs: Org[] }) {
                     {isDeleting === org.id ? 'Deleting...' : 'Delete'}
                   </button>
                 </div>
+                </div>
+
+                <Organisers orgId={org.id} organisers={organisersByOrg[org.id] ?? []} />
               </li>
             ))
           )}

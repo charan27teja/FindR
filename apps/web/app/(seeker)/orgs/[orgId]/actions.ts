@@ -143,6 +143,10 @@ export async function markClaimCollected(form: FormData) {
     .eq("id", claim.item_id)
     .eq("org_id", orgId);
 
-  revalidatePath(`/orgs/${orgId}/events/${eventId}`);
+  // A public venue settles claims on the org console; a private one on the
+  // event page. Refresh whichever the button was pressed on, and the home
+  // page either way, because the bell count changes.
+  if (eventId) revalidatePath(`/orgs/${orgId}/events/${eventId}`);
+  revalidatePath(`/orgs/${orgId}`);
   revalidatePath("/");
 }

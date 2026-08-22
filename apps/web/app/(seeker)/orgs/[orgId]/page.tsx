@@ -4,6 +4,7 @@ import { formatInr } from "@findr/shared";
 import { db } from "@/lib/db/client";
 import { requireRole } from "@/lib/auth";
 import EventForm from "./EventForm";
+import ClaimsSection from "./ClaimsSection";
 import { deleteEvent } from "./actions";
 import { eventWhen } from "./when";
 
@@ -50,7 +51,13 @@ export default async function OrgPage({ params }: { params: Promise<{ orgId: str
     created_at: string;
   }[];
 
-  const { data: events, error: eventsError } = await supabase
+  // A public venue's desk is open all year and runs no events, so there is
+  // nothing to schedule and nothing to list.
+  const isPublic = org.type === "PUBLIC";
+
+  const { data: events, error: eventsError } = isPublic
+    ? { data: [], error: null }
+    : await supabase
     .from("events")
     .select("id,name,event_date,end_date,starts_at,ends_at,capacity,price_inr")
     .eq("org_id", orgId)
@@ -109,6 +116,9 @@ export default async function OrgPage({ params }: { params: Promise<{ orgId: str
         </section>
       ) : null}
 
+      {isPublic ? <ClaimsSection orgId={orgId} /> : null}
+
+      {isPublic ? null : (
       <section className="rise" style={{ animationDelay: "120ms" }}>
         <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-neutral-500">Events</h2>
         {eventList.length > 0 ? (
@@ -153,11 +163,14 @@ export default async function OrgPage({ params }: { params: Promise<{ orgId: str
           </p>
         )}
       </section>
+      )}
 
+      {isPublic ? null : (
       <section className="rise mt-8" style={{ animationDelay: "180ms" }}>
         <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-neutral-500">New event</h2>
         <EventForm orgId={orgId} />
       </section>
+      )}
     </main>
   );
 }
