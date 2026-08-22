@@ -2,14 +2,15 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 import { serviceDb } from "./service";
+import { mockSupabaseClient } from "./mock";
 
 /**
  * RLS-aware client: runs as the signed-in user, so every tenant-scoped query
  * is filtered by the policies in supabase/migrations/*_rls.sql (INV-4).
  * Use this by default. Reach for the service client only where documented.
  */
-export async function db() {
-  if (process.env.DEMO_MODE === "true") return serviceDb();
+export async function db(): Promise<ReturnType<typeof createServerClient>> {
+  if (process.env.DEMO_MODE === "true") return mockSupabaseClient as any;
   
   const store = await cookies();
   return createServerClient(

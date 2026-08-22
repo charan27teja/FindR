@@ -32,7 +32,7 @@ export default async function Home({
       {orgs !== null && (
         <ul className="flex flex-col gap-2">
           {orgs?.length ? (
-            orgs.map((o) => (
+            orgs.map((o: any) => (
               <li key={o.id}>
                 <Link
                   href={`/search/${o.id}`}

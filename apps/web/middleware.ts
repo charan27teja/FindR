@@ -5,6 +5,14 @@ const PUBLIC_PATHS = ["/login", "/auth"];
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
+  const path = request.nextUrl.pathname;
+
+  if (process.env.DEMO_MODE === "true") {
+    if (PUBLIC_PATHS.some((p) => path.startsWith(p))) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+    return response;
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -23,15 +31,8 @@ export async function middleware(request: NextRequest) {
 
   // Refreshes the session cookie. Must run before any auth check.
   const { data } = await supabase.auth.getUser();
-
-  const path = request.nextUrl.pathname;
-  if (process.env.DEMO_MODE === "true" && PUBLIC_PATHS.some((p) => path.startsWith(p))) {
-    return NextResponse.redirect(new URL("/", request.url));
-  }
   
   if (!data.user && !PUBLIC_PATHS.some((p) => path.startsWith(p))) {
-    if (process.env.DEMO_MODE === "true") return response;
-    
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", path);

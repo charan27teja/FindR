@@ -105,13 +105,8 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <>
-      <div className="splash" aria-hidden="true">
-        <span className="splash-mark">FindR</span>
-      </div>
-      <Suspense>
-        <LoginForm />
-      </Suspense>
-    </>
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }
