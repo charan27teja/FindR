@@ -30,11 +30,28 @@ export default async function SearchOrgPage({
   const isReport = report === "1";
 
   const supabase = await db();
-  const { data: org, error: orgError } = await supabase
-    .from("orgs")
-    .select("id,name,slug,type")
-    .eq("id", orgId)
-    .single();
+
+  // All three were awaited one after another, and none of them needs another's
+  // answer — three serial round trips to Supabase where one wall-clock wait
+  // does. `events` is fetched even for a public venue, which has none: an
+  // unused query running in parallel is cheaper than a round trip taken in
+  // series, and `needsEvent` still decides whether the result is used.
+  const [
+    { data: org, error: orgError },
+    { data: place },
+    { data: events },
+  ] = await Promise.all([
+    supabase.from("orgs").select("id,name,slug,type").eq("id", orgId).single(),
+    // Asked for separately, and allowed to fail. These columns arrive with a
+    // migration; folding them into the query above meant that until it was
+    // applied the whole page 404'd for a map it could perfectly well do without.
+    supabase.from("orgs").select("location,latitude,longitude").eq("id", orgId).single(),
+    supabase
+      .from("events")
+      .select("id,name,description,event_date,end_date,starts_at,ends_at")
+      .eq("org_id", orgId)
+      .order("event_date"),
+  ]);
 
   // PGRST116 is "no rows" — a real 404. Anything else is the query failing,
   // and reporting that as a missing organisation sends you looking in
@@ -50,28 +67,11 @@ export default async function SearchOrgPage({
   }
   if (!org) notFound();
 
-  // Asked for separately, and allowed to fail. These columns arrive with a
-  // migration; folding them into the query above meant that until it was
-  // applied the whole page 404'd for a map it could perfectly well do without.
-  const { data: place } = await supabase
-    .from("orgs")
-    .select("location,latitude,longitude")
-    .eq("id", orgId)
-    .single();
-
   // A public venue has no event to pick — a station's desk is open all year.
   // Anything else runs events, and which one an item turned up at is the
   // difference between a findable item and a lost one.
   const needsEvent = org.type !== "PUBLIC";
-
-  const { data: events } = needsEvent
-    ? await supabase
-        .from("events")
-        .select("id,name,description,event_date,end_date,starts_at,ends_at")
-        .eq("org_id", orgId)
-        .order("event_date")
-    : { data: [] as EventRow[] };
-  const eventList = (events ?? []) as EventRow[];
+  const eventList = needsEvent ? ((events ?? []) as EventRow[]) : [];
 
   const chosen = eventId ? eventList.find((e) => e.id === eventId) : undefined;
 

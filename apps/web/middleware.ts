@@ -31,10 +31,13 @@ export async function middleware(request: NextRequest) {
     },
   );
 
-  // Refreshes the session cookie. Must run before any auth check.
-  const { data } = await supabase.auth.getUser();
+  // Refresh the session cookie. getSession() decodes the JWT locally — no
+  // HTTPS round-trip to the Auth server. The full getUser() validation still
+  // happens inside requireUser() during the page render; duplicating it here
+  // was adding 200-500ms to every single navigation.
+  const { data } = await supabase.auth.getSession();
   
-  if (!data.user && !PUBLIC_PATHS.some((p) => path.startsWith(p)) && !path.startsWith("/admin")) {
+  if (!data.session && !PUBLIC_PATHS.some((p) => path.startsWith(p)) && !path.startsWith("/admin")) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", path);

@@ -11,15 +11,16 @@ interface LoadingContextType {
 
 const LoadingContext = createContext<LoadingContextType | null>(null);
 
+/** Long enough for the wordmark to read and the reel to turn once. */
+const INTRO_MS = 3000;
+
+
 export function LoadingProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isPending, startReactTransition] = useTransition();
 
   useEffect(() => {
-    // Initial mount: ~1s wordmark, then the icon reel gets two turns.
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 2900);
+    const timer = setTimeout(() => setIsLoading(false), INTRO_MS);
     return () => clearTimeout(timer);
   }, []);
 

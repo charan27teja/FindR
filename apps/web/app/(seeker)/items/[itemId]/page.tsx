@@ -36,41 +36,44 @@ export default async function ItemPage({
   }
   if (!item) notFound();
 
-  const { data: org } = await supabase
-    .from("orgs")
-    .select("name")
-    .eq("id", (item as Record<string, unknown>).org_id as string)
-    .single();
-
   // Belt and braces: the row went through the allowlist, and the tripwire
   // checks the result rather than trusting that it did.
   const safe = serialiseItemForSeeker(item as Record<string, unknown>);
   assertNoPrivateFields(safe);
 
-  // The photo. Read with the service role because image_full_path is a private
-  // column — the grant does not expose it, so the RLS client above genuinely
-  // cannot see it. The redacted crop is preferred when one exists; nothing
-  // produces one yet, so in practice this is the full photograph.
-  //
-  // Only the signed URL crosses into the page. The storage path itself never
-  // leaves this function, so nothing downstream can mint its own link, and the
-  // one we hand out expires in fifteen minutes.
-  const { data: media } = await serviceDb()
-    .from("items")
-    .select("image_redacted_path,image_full_path")
-    .eq("id", itemId)
-    .single();
+  // org, media, signed URL, and existing claim are all independent of each
+  // other — run them in one wall-clock wait instead of four sequential ones.
+  const orgId = (item as Record<string, unknown>).org_id as string;
+  const [{ data: org }, { data: media }, existing] = await Promise.all([
+    supabase
+      .from("orgs")
+      .select("name")
+      .eq("id", orgId)
+      .single(),
+    // The photo. Read with the service role because image_full_path is a private
+    // column — the grant does not expose it, so the RLS client above genuinely
+    // cannot see it.
+    serviceDb()
+      .from("items")
+      .select("image_redacted_path,image_full_path")
+      .eq("id", itemId)
+      .single(),
+    // Has this person already claimed it? claims_own means this returns their
+    // own row or nothing — never anyone else's (INV-5).
+    supabase
+      .from("claims")
+      .select("id,status")
+      .eq("item_id", itemId)
+      .maybeSingle()
+      .then((r: { data: unknown }) => r.data),
+  ]);
+
+  // The redacted crop is preferred when one exists; nothing produces one yet,
+  // so in practice this is the full photograph. Only the signed URL crosses
+  // into the page — the storage path itself never leaves this function.
   const imageUrl = await signedUrl(
     (media?.image_redacted_path as string | null) ?? (media?.image_full_path as string | null) ?? null,
   );
-
-  // Has this person already claimed it? claims_own means this returns their
-  // own row or nothing — never anyone else's (INV-5).
-  const { data: existing } = await supabase
-    .from("claims")
-    .select("id,status")
-    .eq("item_id", itemId)
-    .maybeSingle();
 
   const rows: [string, string | null][] = [
     ["Reference", safe.short_code ? String(safe.short_code) : null],
