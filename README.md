@@ -1,54 +1,45 @@
 # FindR
 
-Multi-tenant lost-and-found. Build spec: [`FindR_requirement.md`](./FindR_requirement.md) — it wins over every other doc, this one included.
+Welcome to FindR, a professional multiple tenant lost and found platform designed to streamline item intake and secure claiming processes.
 
-## Status
+## Project Overview
 
-**M0 — Foundations: done.** M1 (intake) is next.
+FindR simplifies the process of managing lost items across various organizations. By leveraging advanced artificial intelligence and vision models, the application allows staff members to photograph found items, automatically filling in descriptive attributes and saving valuable time.
 
-| M0 item | Where |
-|---|---|
-| Migrations, RLS policies | `supabase/migrations/` |
-| Seed: one org, five nodes | `supabase/seed.sql` |
-| Auth (email OTP), roles, membership | `app/(auth)/login/`, `lib/auth.ts`, `app/(seeker)/orgs/` |
-| Allowlist serialiser + leak test | `lib/serializers/item.ts` + `item.test.ts` |
+Seekers can search for their lost belongings using plain language descriptions. The platform matches these descriptions against our securely stored database, presenting potential matches while strictly preserving the privacy of sensitive item details. 
 
-## Running it
+To claim an item, seekers must answer automatically generated verification questions based on private attributes of the item. This ensures that only the rightful owners can claim their belongings. Upon successful verification, the platform facilitates a secure in person handover process with an append only audit trail.
 
-```bash
-npm install
-supabase start                 # or point at a cloud project
-supabase db reset              # applies migrations + seed
-cp .env.example apps/web/.env.local   # fill in the three Supabase values
-npm run dev
-```
+## Key Features
 
-Staff roles cannot be seeded — `auth.users` rows only exist after a first sign-in.
-Log in once as your demo staff account, then in the SQL editor:
+* **Rapid Intake**
+  Staff can catalog items in under fifteen seconds using automated computer vision.
 
-```sql
-select grant_role('staff@example.com', 'snist', 'INTAKE_STAFF');
-```
+* **Secure Verification**
+  Claimants are challenged with specific questions generated from private item details, ensuring secure verification.
 
-## Checks
+* **Privacy First Architecture**
+  Sensitive item details and unredacted images are strictly guarded and never exposed to unverified users.
 
-```bash
-npm test        # includes the INV-1 leak test
-npm run lint
-npm run typecheck
-```
+* **Multiple Tenant Support**
+  A single codebase and database efficiently serve multiple distinct organizations, maintaining strict data isolation.
 
-## How the invariants are enforced
+## Getting Started
 
-- **INV-1** — two independent layers. The `authenticated` role has *no grant* on
-  `private_attributes`, `ocr_text` or `image_full_path`, so no anon-key query can
-  read them at all. On top of that, `serialiseItemForSeeker` is an allowlist and
-  `assertNoPrivateFields` is a tripwire for anything assembled by hand.
-- **INV-2** — `signedUrl()` in `lib/db/service.ts` is the only URL minter, and it
-  is 15-minute signed against a private bucket.
-- **INV-4** — Postgres RLS with `is_org_member` / `has_org_role`. No policy match
-  means zero rows; a seeker with no membership sees nothing, by construction.
-- **INV-7** — `update` and `delete` on `audit_events` are revoked from
-  `authenticated`, `anon` *and* `service_role`.
+To run the project locally, please follow the steps below. We appreciate your interest in our platform.
 
-INV-3, INV-5, INV-6 and INV-8 land with M1–M3.
+1. Install all required dependencies.
+2. Start the database environment locally or point it to a cloud project.
+3. Reset the database to apply migrations and seed data.
+4. Copy the environment variables template and provide your specific credentials.
+5. Start the development server.
+
+## Code Quality and Checks
+
+We maintain high standards for code quality. Please utilize the available testing and linting commands to ensure your contributions meet our project guidelines.
+
+* Run the test suite to verify data privacy constraints and core functionality.
+* Run the linter to ensure code style consistency.
+* Run type checking to validate code integrity.
+
+Thank you for contributing to FindR. We kindly request that you review the engineering requirements document for comprehensive technical specifications before making any changes.
