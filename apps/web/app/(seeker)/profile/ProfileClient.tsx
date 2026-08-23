@@ -315,7 +315,7 @@ export default function ProfileClient({ initialData }: ProfileClientProps) {
               </svg>
               <span className="text-sm font-medium text-neutral-400">Phone Number</span>
             </div>
-            <span className="text-sm font-medium text-white">{formData.phone || "—"}</span>
+            <span className="text-sm font-medium text-white">{formData.phone || "Not set"}</span>
           </div>
         </div>
       </div>

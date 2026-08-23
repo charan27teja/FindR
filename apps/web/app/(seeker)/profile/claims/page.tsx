@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db/client";
 import Link from "next/link";
+import { ClientDate } from "@/components/ClientDate";
 
 export const metadata = {
   title: "Your Claims - FindR",
@@ -99,7 +100,7 @@ export default async function ClaimsPage() {
                   {claim.orgs?.name || "Unknown Location"}
                 </span>
                 <span className="text-xs text-neutral-500">
-                  {new Date(claim.created_at).toLocaleDateString()}
+                  <ClientDate date={claim.created_at} format="date" />
                 </span>
               </div>
             </div>

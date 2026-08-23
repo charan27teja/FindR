@@ -21,7 +21,7 @@ export default async function ProfilePage() {
 
   const email = user.email || "user@gmail.com";
   const address = user.user_metadata?.address || "Hyderabad, India";
-  const phone = user.user_metadata?.phone || user.phone || "+91 98765 43210";
+  const phone = user.user_metadata?.phone || user.phone || "";
   const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture;
 
   return (

@@ -1,5 +1,6 @@
 import { db } from "@/lib/db/client";
 import { markClaimCollected } from "./actions";
+import { ClientDate } from "@/components/ClientDate";
 
 /**
  * Claims waiting on an organisation's items, and the button that settles one.
@@ -97,7 +98,7 @@ export default async function ClaimsSection({
                   ) : null}
                   <div className="flex gap-2">
                     <dt>Filed</dt>
-                    <dd>{new Date(c.created_at).toLocaleString()}</dd>
+                    <dd><ClientDate date={c.created_at} /></dd>
                   </div>
                 </dl>
 
