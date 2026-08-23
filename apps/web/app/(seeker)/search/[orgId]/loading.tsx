@@ -1,9 +1,6 @@
-import BouncingDots from "@/components/BouncingDots";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
+/** Same icon reel as the rest of the lost-item flow — see (seeker)/loading.tsx. */
 export default function Loading() {
-  return (
-    <div className="flex min-h-dvh items-center justify-center bg-black">
-      <BouncingDots className="h-2 w-2 bg-white/70" />
-    </div>
-  );
+  return <LoadingScreen intro={false} />;
 }

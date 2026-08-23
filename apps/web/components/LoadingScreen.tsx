@@ -21,11 +21,23 @@ const TIPS = [
   'Report once and we notify you the moment it is handed in.'
 ];
 
-export function LoadingScreen({ isLoading = true }: { isLoading?: boolean }) {
+export function LoadingScreen({
+  isLoading = true,
+  intro = true,
+}: {
+  isLoading?: boolean;
+  /**
+   * The wordmark and the opening flash belong to a cold start. A route
+   * transition mounts a fresh copy of this screen, so without `intro={false}`
+   * every navigation would replay the introduction instead of going straight
+   * to the reel — which is what the session-long copy in LoadingProvider does.
+   */
+  intro?: boolean;
+}) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [transitionState, setTransitionState] = useState<'active' | 'exit'>('active');
   const [visible, setVisible] = useState(true);
-  const [phase, setPhase] = useState<'logo' | 'icons'>('logo');
+  const [phase, setPhase] = useState<'logo' | 'icons'>(intro ? 'logo' : 'icons');
   const [order, setOrder] = useState(() => ICONS.map((_, i) => i));
   const [tip, setTip] = useState(TIPS[0]);
 
@@ -40,9 +52,10 @@ export function LoadingScreen({ isLoading = true }: { isLoading?: boolean }) {
   // The wordmark plays once per page load. This component stays mounted for
   // the session, so later route transitions open straight on the icon reel.
   useEffect(() => {
+    if (!intro) return;
     const timer = setTimeout(() => setPhase('icons'), 1000);
     return () => clearTimeout(timer);
-  }, []);
+  }, [intro]);
 
   useEffect(() => {
     if (isLoading) {
@@ -79,7 +92,7 @@ export function LoadingScreen({ isLoading = true }: { isLoading?: boolean }) {
       }`}
     >
       {/* Flash overlay on start */}
-      <div className="absolute inset-0 bg-white pointer-events-none animate-flash z-10" />
+      {intro && <div className="absolute inset-0 bg-white pointer-events-none animate-flash z-10" />}
 
       <main className="relative flex flex-col items-center justify-center w-full h-full">
         {phase === 'logo' ? (
