@@ -197,7 +197,7 @@ export async function addOrganiser(
 
 /**
  * The profiles row to hang the membership on, creating the account if this is
- * someone who has never used Findr.
+ * someone who has never used FindR.
  *
  * memberships.user_id references profiles, which references auth.users, so
  * there is no such thing as a membership for an address with no account —

@@ -1,4 +1,4 @@
--- Findr core schema. See requirements §6.
+-- FindR core schema. See requirements §6.
 create extension if not exists vector;
 
 -- ORGANISATIONS ------------------------------------------------------------

@@ -1,5 +1,5 @@
 /**
- * Outbound mail, and the one message Findr currently sends.
+ * Outbound mail, and the one message FindR currently sends.
  *
  * No `server-only` guard here on purpose: the composer below is a pure
  * function with a unit test, and `server-only` throws under `node --test`.
@@ -39,7 +39,7 @@ export function claimNotificationEmail(
   return {
     subject: `Claim on ${code} — ${label}`,
     text: [
-      "Someone has claimed an item you logged on Findr.",
+      "Someone has claimed an item you logged on FindR.",
       "",
       "ITEM",
       `  Code:        ${code}`,
@@ -62,7 +62,7 @@ export function claimNotificationEmail(
 /**
  * The mail someone gets when an admin adds them as an organiser.
  *
- * Signing in is deliberately described rather than linked: Findr logs people
+ * Signing in is deliberately described rather than linked: FindR logs people
  * in with a one-time code sent to this address, so a link in this email would
  * be a second, confusingly different way in.
  */
@@ -74,12 +74,12 @@ export function organiserAddedEmail(
   return {
     subject: `You are now an organiser of ${orgName}`,
     text: [
-      `An admin has added you as an organiser of ${orgName} on Findr.`,
+      `An admin has added you as an organiser of ${orgName} on FindR.`,
       "",
       "You can now log found items at its desk, and review and settle claims:",
       `  ${origin}/orgs/${orgId}`,
       "",
-      "Sign in at this address to get in — Findr emails you a one-time code, so",
+      "Sign in at this address to get in — FindR emails you a one-time code, so",
       "there is no password to set up.",
       "",
       "If you were not expecting this, you can ignore it. Nothing happens to",
@@ -118,7 +118,7 @@ export async function sendEmail(msg: {
       // Resend only accepts a verified sender; onboarding@resend.dev is the one
       // address that works before a domain has been set up in the dashboard.
       body: JSON.stringify({
-        from: process.env.RESEND_FROM ?? "Findr <onboarding@resend.dev>",
+        from: process.env.RESEND_FROM ?? "FindR <onboarding@resend.dev>",
         ...msg,
       }),
     });

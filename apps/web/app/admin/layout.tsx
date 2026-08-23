@@ -13,7 +13,7 @@ export default function AdminLayout({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href="/admin" className="font-semibold text-lg tracking-tight hover:opacity-80 transition-opacity">
-              Findr Admin
+              FindR Admin
             </Link>
             <span className="bg-blue-100 text-blue-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">
               Global Platform

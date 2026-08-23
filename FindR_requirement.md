@@ -1,4 +1,4 @@
-# Findr — Engineering Requirements
+# FindR — Engineering Requirements
 
 > Agent-facing build spec. Read this file completely before writing code.
 > Companion docs (human-facing): Pitch v2, Application Specification, Feature Checklist, PRD.

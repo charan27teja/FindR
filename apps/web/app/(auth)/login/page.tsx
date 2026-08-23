@@ -12,7 +12,7 @@ function LoginForm() {
     <div className="mx-auto flex min-h-dvh w-full max-w-sm flex-col px-6">
       {/* Same wordmark bar as the home page */}
       <header className="rise flex items-center justify-between py-5">
-        <h1 className="text-2xl font-semibold tracking-tight">Findr</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">FindR</h1>
       </header>
 
       <main className="flex flex-1 flex-col justify-center gap-6 pb-12">
@@ -57,7 +57,7 @@ function LoginForm() {
           className="rise text-center text-xs leading-relaxed text-neutral-500"
           style={{ animationDelay: "180ms" }}
         >
-          One account covers every campus, station and event on Findr.
+          One account covers every campus, station and event on FindR.
         </p>
       </main>
     </div>

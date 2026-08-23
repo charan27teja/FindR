@@ -85,7 +85,7 @@ export function LoadingScreen({ isLoading = true }: { isLoading?: boolean }) {
         {phase === 'logo' ? (
           /* Logo screen — the name alone, then it clears for the reel. */
           <h1 className="logo-mark text-[clamp(2rem,12vw,3.25rem)] font-semibold tracking-[0.12em] text-white">
-            Findr
+            FindR
           </h1>
         ) : (
           <div className="rise flex flex-col items-center">

@@ -3,7 +3,7 @@ import { db } from "@/lib/db/client";
 import Link from "next/link";
 
 export const metadata = {
-  title: "Your Claims - Findr",
+  title: "Your Claims - FindR",
 };
 
 type ClaimRecord = {

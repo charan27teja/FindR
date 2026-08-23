@@ -3,7 +3,7 @@ import { serviceDb } from '@/lib/db/service';
 import { AdminClientPage } from './AdminClientPage.tsx';
 
 export const metadata = {
-  title: 'Admin Dashboard - Findr',
+  title: 'Admin Dashboard - FindR',
 };
 
 export default async function AdminPage() {

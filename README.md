@@ -1,4 +1,4 @@
-# Findr
+# FindR
 
 Multi-tenant lost-and-found. Build spec: [`FindR_requirement.md`](./FindR_requirement.md) — it wins over every other doc, this one included.
 
