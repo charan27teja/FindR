@@ -31,13 +31,16 @@ export async function middleware(request: NextRequest) {
     },
   );
 
-  // Refresh the session cookie. getSession() decodes the JWT locally — no
-  // HTTPS round-trip to the Auth server. The full getUser() validation still
-  // happens inside requireUser() during the page render; duplicating it here
-  // was adding 200-500ms to every single navigation.
-  const { data } = await supabase.auth.getSession();
-  
-  if (!data.session && !PUBLIC_PATHS.some((p) => path.startsWith(p)) && !path.startsWith("/admin")) {
+  // Refreshes the session cookie, and getUser() is what does it — getSession()
+  // only decodes the JWT already in the cookie, so once the access token
+  // expired nothing ever renewed it: middleware waved the stale cookie
+  // through, then requireUser() rejected it during the render and every
+  // server action started failing. This call is the refresh, not a duplicate
+  // check; requireUser() is memoised per request, so it costs one round trip
+  // per navigation rather than the four it used to.
+  const { data } = await supabase.auth.getUser();
+
+  if (!data.user && !PUBLIC_PATHS.some((p) => path.startsWith(p)) && !path.startsWith("/admin")) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", path);
