@@ -73,7 +73,9 @@ export default function LogFoundItemClient({
             colour: result.fields.colour,
             details: result.fields.details ?? "",
           });
-          setNotice(null);
+          // A blank field is the model saying it could not tell, not a
+          // failure — say which ones rather than throwing the rest away.
+          setNotice(result.note ?? null);
         } else {
           setNotice(result.message);
         }

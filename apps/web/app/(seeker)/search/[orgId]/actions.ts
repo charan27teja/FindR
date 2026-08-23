@@ -5,7 +5,7 @@ import { FoundItemFields } from "@findr/shared";
 import { db } from "@/lib/db/client";
 import { serviceDb, SIGNED_URL_TTL_SECONDS } from "@/lib/db/service";
 import { requireUser, rolesIn, STAFF_ROLES } from "@/lib/auth";
-import { extractFoundItem } from "@/lib/ai/vision";
+import { extractFoundItem, type FoundItemDraft } from "@/lib/ai/vision";
 import { assertNoPrivateFields, serialiseItemsForSeeker } from "@/lib/serializers/item";
 import {
   claimNotificationEmail,
@@ -84,8 +84,21 @@ function splitDataUrl(dataUrl: string): { mimeType: string; b64: string } | null
 }
 
 export type AnalyseState =
-  | { status: "ok"; fields: FoundItemFields }
+  | { status: "ok"; fields: FoundItemDraft; note?: string }
   | { status: "empty"; message: string };
+
+/** Which of the three required fields the model left blank, in reading order. */
+function blanks(fields: FoundItemDraft): string[] {
+  return (
+    [
+      ["description", fields.description],
+      ["category", fields.category],
+      ["colour", fields.colour],
+    ] as const
+  )
+    .filter(([, v]) => !v)
+    .map(([name]) => name);
+}
 
 /**
  * Reads the photo and hands back the four fields for the review screen.
@@ -93,6 +106,11 @@ export type AnalyseState =
  * Never throws and never blocks the hand-in: when the model is unavailable the
  * review screen opens with blank fields and the person types them, which is
  * strictly better than losing the wallet they are standing there holding.
+ *
+ * A partial read is a success, not a failure. Whatever the model could see is
+ * filled in and anything it could not is named in `note` — "could not read the
+ * photo" is reserved for a photo that genuinely produced nothing and for the
+ * API being unreachable, which is what it used to say either way.
  */
 export async function analyseFoundItem(
   photoDataUrl: string,
@@ -104,9 +122,18 @@ export async function analyseFoundItem(
   if (!parts) return { status: "empty", message: "That photo could not be read. Try taking it again." };
 
   const fields = await extractFoundItem(parts.b64, context, parts.mimeType);
-  return fields
-    ? { status: "ok", fields }
-    : { status: "empty", message: "Could not read the photo automatically — fill these in yourself." };
+  if (!fields) {
+    return { status: "empty", message: "Could not read the photo automatically — fill these in yourself." };
+  }
+
+  const missing = blanks(fields);
+  return {
+    status: "ok",
+    fields,
+    note: missing.length
+      ? `Could not make out the ${missing.join(" or ")} — add ${missing.length > 1 ? "those" : "that"} yourself.`
+      : undefined,
+  };
 }
 
 export type SubmitState = { error?: string; shortCode?: string };

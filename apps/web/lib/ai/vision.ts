@@ -4,7 +4,7 @@
 import { createHash } from "node:crypto";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
-import { FoundItemFields, VisionExtractResponse } from "@findr/shared";
+import { VisionExtractResponse } from "@findr/shared";
 
 const MODEL = process.env.GEMINI_MODEL ?? "gemini-3.6-flash";
 const CACHE_DIR = process.env.RESPONSE_CACHE_DIR ?? "./.cache/vision";
@@ -250,15 +250,35 @@ const FOUND_ITEM_SCHEMA = {
 };
 
 /**
+ * What the model made of the photo. Every field may be blank.
+ *
+ * Deliberately NOT FoundItemFields: that schema is the rule for *saving* an
+ * item, where a category and a colour are required. Holding a draft to it
+ * meant one unanswerable field threw away the three the model got right, and
+ * the person retyped all four. Blanks are the model's honest answer to "what
+ * colour is this" for a photo taken in the dark; the review screen is where
+ * they get filled in, and FoundItemFields still guards the submit.
+ */
+export type FoundItemDraft = {
+  description: string;
+  category: string;
+  colour: string;
+  details: string;
+};
+
+/**
  * INV-6 again: null rather than a throw. A model that is down or slow must not
  * stop someone handing in a wallet — the review screen simply opens with empty
  * fields for them to fill in themselves.
+ *
+ * null now means only that: no API key, a non-2xx, a timeout, or a response
+ * with nothing in it at all. A partial read comes back as a partial draft.
  */
 export async function extractFoundItem(
   imageB64: string,
   context: { orgName?: string; eventName?: string } = {},
   mimeType = "image/jpeg",
-): Promise<FoundItemFields | null> {
+): Promise<FoundItemDraft | null> {
   // Namespaced: the same photo can be run through both prompts, and without
   // this the two answers would overwrite each other in the cache.
   const key = cacheKey(imageB64, `${MODEL}:found-item-v2`);
@@ -312,6 +332,10 @@ export async function extractFoundItem(
     }
 
     const parsed = parseFoundItemJson(JSON.parse(text));
+    if (!parsed) {
+      console.error("[found-item] every field came back blank");
+      return null;
+    }
     await writeFoundCache(key, parsed);
     return parsed;
   } catch (e) {
@@ -320,26 +344,39 @@ export async function extractFoundItem(
   }
 }
 
-/** Exported for the test: everything that can be wrong with a response is here. */
-export function parseFoundItemJson(raw: unknown): FoundItemFields {
+/**
+ * Shapes a raw model object into a draft. Exported for the test.
+ *
+ * Takes whatever is there and blanks whatever is not, rather than validating:
+ * a field the model could not answer is information, not a malformed
+ * response. null is reserved for a response with nothing usable in it at all,
+ * which is the only case that still reads as "could not read the photo".
+ */
+export function parseFoundItemJson(raw: unknown): FoundItemDraft | null {
   const o = (raw ?? {}) as Record<string, unknown>;
-  return FoundItemFields.parse({
-    description: o.description ?? "",
-    category: o.category ?? "",
-    colour: o.colour ?? "",
-    details: o.details ?? "",
-  });
+  const field = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
+
+  const draft = {
+    description: field(o.description, 500),
+    category: field(o.category, 60),
+    colour: field(o.colour, 60),
+    details: field(o.details, 500),
+  };
+  return Object.values(draft).some(Boolean) ? draft : null;
 }
 
-async function readFoundCache(key: string): Promise<FoundItemFields | null> {
+async function readFoundCache(key: string): Promise<FoundItemDraft | null> {
   try {
-    return FoundItemFields.parse(JSON.parse(await readFile(path.join(CACHE_DIR, `${key}.json`), "utf8")));
+    // Through the same lenient parse as a live response: holding the cache to
+    // FoundItemFields meant a partial draft failed to read back and silently
+    // paid for the API call again on every retake of the same photo.
+    return parseFoundItemJson(JSON.parse(await readFile(path.join(CACHE_DIR, `${key}.json`), "utf8")));
   } catch {
     return null;
   }
 }
 
-async function writeFoundCache(key: string, value: FoundItemFields): Promise<void> {
+async function writeFoundCache(key: string, value: FoundItemDraft): Promise<void> {
   try {
     await mkdir(CACHE_DIR, { recursive: true });
     await writeFile(path.join(CACHE_DIR, `${key}.json`), JSON.stringify(value, null, 2));

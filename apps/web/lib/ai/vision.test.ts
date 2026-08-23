@@ -68,21 +68,37 @@ test("found-item: a well-formed response comes through trimmed", () => {
     colour: "navy blue",
     details: "Frayed strap on the left side.",
   });
-  assert.equal(r.description, "A navy blue backpack with a front zip pocket.");
-  assert.equal(r.details, "Frayed strap on the left side.");
+  assert.equal(r?.description, "A navy blue backpack with a front zip pocket.");
+  assert.equal(r?.details, "Frayed strap on the left side.");
 });
 
-test("found-item: nothing distinguishing is null, not an empty string", () => {
+test("found-item: nothing distinguishing is a blank, and the rest still comes through", () => {
   const r = parseFoundItemJson({
     description: "A plain black umbrella.",
     category: "umbrella",
     colour: "black",
     details: "",
   });
-  assert.equal(r.details, null, "an empty details string becomes null for the column");
+  assert.equal(r?.details, "");
+  assert.equal(r?.category, "umbrella");
 });
 
-test("found-item: a missing field fails loudly rather than saving a blank item", () => {
-  assert.throws(() => parseFoundItemJson({ category: "keys", colour: "silver" }));
-  assert.throws(() => parseFoundItemJson(null));
+test("found-item: what the model could see survives what it could not", () => {
+  // The whole point: one unanswerable field used to throw away the three it
+  // got right, and the person retyped all four.
+  const r = parseFoundItemJson({ category: "keys", colour: "silver" });
+  assert.equal(r?.category, "keys");
+  assert.equal(r?.colour, "silver");
+  assert.equal(r?.description, "", "a field the model omitted is blank, not a failure");
+
+  // Non-strings are not fields either, but they do not sink the rest.
+  const mixed = parseFoundItemJson({ description: "A wallet.", category: 7, colour: null });
+  assert.equal(mixed?.description, "A wallet.");
+  assert.equal(mixed?.category, "");
+});
+
+test("found-item: only a response with nothing in it at all is a failure", () => {
+  assert.equal(parseFoundItemJson(null), null);
+  assert.equal(parseFoundItemJson({}), null);
+  assert.equal(parseFoundItemJson({ description: "   ", category: "" }), null);
 });
