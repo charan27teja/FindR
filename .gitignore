@@ -20,3 +20,8 @@ supabase/.branches/
 
 # vision response cache (DEMO_MODE replay)
 apps/web/.cache/
+
+# android signing — passwords in plaintext, and the release key itself
+android/keystore.properties
+android/*.jks
+android/local.properties

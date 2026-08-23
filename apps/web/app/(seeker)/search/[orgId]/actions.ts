@@ -7,6 +7,13 @@ import { serviceDb, SIGNED_URL_TTL_SECONDS } from "@/lib/db/service";
 import { requireUser, rolesIn, STAFF_ROLES } from "@/lib/auth";
 import { extractFoundItem } from "@/lib/ai/vision";
 import { assertNoPrivateFields, serialiseItemsForSeeker } from "@/lib/serializers/item";
+import {
+  claimNotificationEmail,
+  sendEmail,
+  type ClaimedItemSummary,
+  type Contact,
+} from "@/lib/email";
+import { requestOrigin } from "@/lib/origin";
 
 export type LostReportState = {
   error?: string;
@@ -375,20 +382,77 @@ export async function submitClaim(_prev: ClaimState, form: FormData): Promise<Cl
   const supabase = await db();
   // org_id comes off the item, never off the form: a claim must be filed
   // against the org that actually holds the thing.
-  const { data: item } = await supabase
+  const { data: itemRow } = await supabase
     .from("items")
-    .select("id,org_id")
+    .select("id,org_id,short_code,category,colour,public_description,logged_by")
     .eq("id", itemId)
     .single();
-  if (!item) return { error: "That item is no longer listed." };
+  if (!itemRow) return { error: "That item is no longer listed." };
+  const item = itemRow as ClaimedItem;
+
+  // claims.user_id references profiles, and the phone the person typed on
+  // /profile only ever reached auth metadata. Copying it across is what puts a
+  // contact next to the claim — both in the desk's queue and in the mail below.
+  const phone = metaString(user.user_metadata?.phone) ?? user.phone ?? null;
+  await serviceDb()
+    .from("profiles")
+    .upsert({ id: user.id, email: user.email, ...(phone ? { phone } : {}) }, { onConflict: "id" });
 
   const { error } = await supabase
     .from("claims")
     .insert({ item_id: itemId, user_id: user.id, org_id: item.org_id });
-  // A duplicate simply means they already claimed it.
-  if (error && error.code !== "23505") return { error: error.message };
+  // A duplicate simply means they already claimed it — and that the organiser
+  // was mailed the first time, so this returns before mailing them again.
+  if (error) {
+    return error.code === "23505" ? { claimed: true } : { error: error.message };
+  }
+
+  await notifyOrganiserOfClaim(item, {
+    name: metaString(user.user_metadata?.full_name) ?? metaString(user.user_metadata?.name),
+    email: user.email ?? null,
+    phone,
+  });
 
   return { claimed: true };
+}
+
+type ClaimedItem = ClaimedItemSummary & { logged_by: string | null };
+
+/** user_metadata is `any`-shaped; only strings with something in them count. */
+function metaString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+/**
+ * Emails whoever logged the item that someone has claimed it.
+ *
+ * Best-effort on purpose. The claim is already committed and visible in the
+ * desk's queue by the time this runs, so a missing address or a mail server
+ * having a bad day is worth a server log and nothing more — it must never
+ * surface as "your claim failed" to the person who filed it.
+ *
+ * ponytail: only the logger is mailed, not every ORG_ADMIN. Every item logged
+ * through submitFoundItem carries logged_by; widen this to a membership query
+ * if items ever arrive by some other route.
+ */
+async function notifyOrganiserOfClaim(item: ClaimedItem, claimant: Contact): Promise<void> {
+  try {
+    if (!item.logged_by) return;
+
+    // profiles is readable to a seeker only for their own row, so the
+    // organiser's address needs the service role.
+    const { data: organiser } = await serviceDb()
+      .from("profiles")
+      .select("email")
+      .eq("id", item.logged_by)
+      .single();
+    const to = (organiser as { email: string | null } | null)?.email;
+    if (!to) return;
+
+    await sendEmail({ to, ...claimNotificationEmail(item, claimant, await requestOrigin()) });
+  } catch (cause) {
+    console.error("Could not notify the organiser of a claim:", cause);
+  }
 }
 
 
