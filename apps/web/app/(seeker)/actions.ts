@@ -3,6 +3,7 @@
 import { db } from "@/lib/db/client";
 import { requireUser } from "@/lib/auth";
 import { transcribeSpeech } from "@/lib/ai/vision";
+import { nearbyPlaces } from "@/lib/nearby";
 import type { ClaimNotice } from "@/components/ClaimsBell";
 
 /**
@@ -104,4 +105,14 @@ export async function transcribeVoiceSearch(audioB64: string): Promise<{ text?: 
 
   const text = await transcribeSpeech(audioB64, "audio/wav");
   return text ? { text } : { error: "Could not make out any speech." };
+}
+
+/**
+ * Public venues around the seeker, discovering the city's own if we have never
+ * seen it before. Sign-in gated: the discovery path hits two external APIs, and
+ * an open endpoint would let anyone drive that traffic.
+ */
+export async function fetchNearbyPlaces(latitude: number, longitude: number) {
+  await requireUser();
+  return nearbyPlaces(latitude, longitude);
 }

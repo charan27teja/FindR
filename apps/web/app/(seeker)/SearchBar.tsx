@@ -65,6 +65,21 @@ export type EventLite = {
   ends_at: string;
 };
 
+/**
+ * This box searches organisations and events — never items. The old copy said
+ * "search for a lost item", which sends someone typing "black umbrella" into a
+ * list that will never contain one. Every line here names a place or an
+ * occasion, because that is the question actually being asked: where were you
+ * when you lost it?
+ */
+const PLACEHOLDERS = [
+  "Where did you lose it?",
+  "Try your college, station or mall",
+  "Search a wedding, fest or conference",
+  "Name the place and we'll show its desk",
+  "Search by organisation or event",
+];
+
 export default function SearchBar({ orgs, events = [] }: { orgs: Org[]; events?: EventLite[] }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -168,13 +183,6 @@ export default function SearchBar({ orgs, events = [] }: { orgs: Org[]; events?:
   };
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
 
-  const PLACEHOLDERS = [
-    "Search for a lost item",
-    "Lost your phone? Search here",
-    "Search by organisation or location",
-    "Search by item name or category",
-  ];
-
   useEffect(() => {
     if (isFocused || query || isListening) return;
 
@@ -183,7 +191,7 @@ export default function SearchBar({ orgs, events = [] }: { orgs: Org[]; events?:
     }, 3400);
 
     return () => clearInterval(interval);
-  }, [isFocused, query, isListening, PLACEHOLDERS.length]);
+  }, [isFocused, query, isListening]);
 
   const toggleVoiceSearch = () => {
     if (transcribing) return;
@@ -366,9 +374,6 @@ export default function SearchBar({ orgs, events = [] }: { orgs: Org[]; events?:
       </li>
     );
   }
-
-  const currentPlaceholder = PLACEHOLDERS[placeholderIndex];
-  const nextPlaceholder = PLACEHOLDERS[(placeholderIndex + 1) % PLACEHOLDERS.length];
 
   return (
     <div ref={wrapperRef} className="relative z-50">
