@@ -3,6 +3,7 @@
 import { useActionState, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { analyseFoundItem, submitFoundItem, type SubmitState } from "./actions";
+import { photoToDataUrl } from "@/lib/image";
 
 type EventContext = { id: string; name: string; description: string | null; when: string };
 
@@ -37,12 +38,15 @@ export default function LogFoundItemClient({
   const [state, submit, submitting] = useActionState<SubmitState, FormData>(submitFoundItem, {});
   const cameraRef = useRef<HTMLInputElement>(null);
 
-  function onCapture(e: React.ChangeEvent<HTMLInputElement>) {
+  async function onCapture(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = () => setPhoto(reader.result as string);
-    reader.readAsDataURL(file);
+    try {
+      setPhoto(await photoToDataUrl(file));
+      setNotice(null);
+    } catch {
+      setNotice("That photo could not be read. Try taking it again.");
+    }
   }
 
   function retake() {
@@ -57,20 +61,27 @@ export default function LogFoundItemClient({
     if (!photo) return;
     setStep("processing");
     startAnalyse(async () => {
-      const result = await analyseFoundItem(photo, {
-        orgName,
-        eventName: event?.name,
-      });
-      if (result.status === "ok") {
-        setFields({
-          description: result.fields.description,
-          category: result.fields.category,
-          colour: result.fields.colour,
-          details: result.fields.details ?? "",
+      try {
+        const result = await analyseFoundItem(photo, {
+          orgName,
+          eventName: event?.name,
         });
-        setNotice(null);
-      } else {
-        setNotice(result.message);
+        if (result.status === "ok") {
+          setFields({
+            description: result.fields.description,
+            category: result.fields.category,
+            colour: result.fields.colour,
+            details: result.fields.details ?? "",
+          });
+          setNotice(null);
+        } else {
+          setNotice(result.message);
+        }
+      } catch {
+        // The action never throws on its own, so this is the request itself
+        // failing. Landing on the review screen with a note beats a spinner
+        // that never resolves — the fields can still be typed.
+        setNotice("The photo could not be sent. Fill these in yourself, or try again.");
       }
       setStep("review");
     });

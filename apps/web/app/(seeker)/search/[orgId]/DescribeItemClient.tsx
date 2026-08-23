@@ -6,6 +6,7 @@ import { submitLostItem, type MatchItem } from "./actions";
 import BouncingDots from "@/components/BouncingDots";
 import SearchingAnimation from "@/components/SearchingAnimation";
 import ScanningImagePlaceholder from "@/components/ScanningImagePlaceholder";
+import { photoToDataUrl } from "@/lib/image";
 
 type EventContext = { id: string; name: string; description: string | null; when: string };
 
@@ -60,14 +61,15 @@ export default function DescribeItemClient({
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setPhoto(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+    try {
+      setPhoto(await photoToDataUrl(file));
+      setMatchError(null);
+    } catch {
+      setMatchError("That photo could not be read. Try taking it again.");
+    }
   };
 
   const removePhoto = () => {
