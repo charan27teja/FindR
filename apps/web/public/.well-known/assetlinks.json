@@ -1,0 +1,10 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.findr.app",
+    "sha256_cert_fingerprints": [
+      "7C:7E:F7:D0:73:5A:EA:AF:D1:25:6F:AC:A2:D9:CC:19:10:B9:18:92:DF:C9:2E:6D:3A:84:35:4A:87:76:E7:34"
+    ]
+  }
+}]
