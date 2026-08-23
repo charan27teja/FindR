@@ -5,7 +5,7 @@ import { FoundItemFields } from "@findr/shared";
 import { db } from "@/lib/db/client";
 import { serviceDb, SIGNED_URL_TTL_SECONDS } from "@/lib/db/service";
 import { requireUser, rolesIn, STAFF_ROLES } from "@/lib/auth";
-import { extractFoundItem, type FoundItemDraft } from "@/lib/ai/vision";
+import { extractFoundItem, type FoundItemDraft, type FoundItemFailure } from "@/lib/ai/vision";
 import { assertNoPrivateFields, serialiseItemsForSeeker } from "@/lib/serializers/item";
 import {
   claimNotificationEmail,
@@ -87,6 +87,18 @@ export type AnalyseState =
   | { status: "ok"; fields: FoundItemDraft; note?: string }
   | { status: "empty"; message: string };
 
+/**
+ * One sentence per cause. Every failure used to say "could not read the photo
+ * automatically", which is only true for the last of these — and told whoever
+ * had to fix it nothing at all.
+ */
+const FAILURE_MESSAGE: Record<FoundItemFailure, string> = {
+  "no-api-key": "Photo reading is not switched on for this server — fill these in yourself.",
+  "api-error": "The photo service did not answer — fill these in yourself, or try again.",
+  "unreadable-response": "The photo service gave an answer we could not use — fill these in yourself.",
+  "nothing-in-photo": "Could not make out anything in that photo — fill these in yourself.",
+};
+
 /** Which of the three required fields the model left blank, in reading order. */
 function blanks(fields: FoundItemDraft): string[] {
   return (
@@ -121,11 +133,10 @@ export async function analyseFoundItem(
   const parts = splitDataUrl(photoDataUrl);
   if (!parts) return { status: "empty", message: "That photo could not be read. Try taking it again." };
 
-  const fields = await extractFoundItem(parts.b64, context, parts.mimeType);
-  if (!fields) {
-    return { status: "empty", message: "Could not read the photo automatically — fill these in yourself." };
-  }
+  const result = await extractFoundItem(parts.b64, context, parts.mimeType);
+  if (!result.ok) return { status: "empty", message: FAILURE_MESSAGE[result.reason] };
 
+  const fields = result.draft;
   const missing = blanks(fields);
   return {
     status: "ok",

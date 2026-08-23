@@ -267,26 +267,45 @@ export type FoundItemDraft = {
 };
 
 /**
- * INV-6 again: null rather than a throw. A model that is down or slow must not
- * stop someone handing in a wallet — the review screen simply opens with empty
- * fields for them to fill in themselves.
+ * Why a read produced nothing. Carried back to the screen rather than only to
+ * a server log: "could not read the photo" for four different causes meant
+ * nobody standing at the desk — or reading a bug report — could tell a missing
+ * API key from a timeout from a photo of a blank wall.
+ */
+export type FoundItemFailure =
+  | "no-api-key"
+  | "api-error"
+  | "unreadable-response"
+  | "nothing-in-photo";
+
+export type FoundItemResult =
+  | { ok: true; draft: FoundItemDraft }
+  | { ok: false; reason: FoundItemFailure };
+
+/**
+ * INV-6 again: a result rather than a throw. A model that is down or slow must
+ * not stop someone handing in a wallet — the review screen simply opens with
+ * empty fields for them to fill in themselves.
  *
- * null now means only that: no API key, a non-2xx, a timeout, or a response
- * with nothing in it at all. A partial read comes back as a partial draft.
+ * A partial read is a success: whatever the model saw comes back, blank where
+ * it saw nothing. Only the four failures above are `ok: false`.
  */
 export async function extractFoundItem(
   imageB64: string,
   context: { orgName?: string; eventName?: string } = {},
   mimeType = "image/jpeg",
-): Promise<FoundItemDraft | null> {
+): Promise<FoundItemResult> {
   // Namespaced: the same photo can be run through both prompts, and without
   // this the two answers would overwrite each other in the cache.
   const key = cacheKey(imageB64, `${MODEL}:found-item-v2`);
   const cached = await readFoundCache(key);
-  if (cached) return cached;
+  if (cached) return { ok: true, draft: cached };
 
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey) {
+    console.error("[found-item] GEMINI_API_KEY is not set in this environment");
+    return { ok: false, reason: "no-api-key" };
+  }
 
   const where = [context.eventName, context.orgName].filter(Boolean).join(", ");
 
@@ -321,26 +340,27 @@ export async function extractFoundItem(
 
     if (!res.ok) {
       console.error(`[found-item] ${MODEL} ${res.status}: ${(await res.text()).slice(0, 300)}`);
-      return null;
+      return { ok: false, reason: "api-error" };
     }
 
     const body = await res.json();
     const text = body?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) {
       console.error(`[found-item] empty candidate (finishReason=${body?.candidates?.[0]?.finishReason})`);
-      return null;
+      return { ok: false, reason: "unreadable-response" };
     }
 
     const parsed = parseFoundItemJson(JSON.parse(text));
     if (!parsed) {
-      console.error("[found-item] every field came back blank");
-      return null;
+      console.error(`[found-item] every field blank: ${text.slice(0, 200)}`);
+      return { ok: false, reason: "nothing-in-photo" };
     }
     await writeFoundCache(key, parsed);
-    return parsed;
+    return { ok: true, draft: parsed };
   } catch (e) {
+    // A timeout arrives here as an AbortError, as does a DNS or TLS failure.
     console.error("[found-item]", e);
-    return null;
+    return { ok: false, reason: "api-error" };
   }
 }
 
