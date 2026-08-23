@@ -5,6 +5,7 @@ import { db } from "@/lib/db/client";
 import { requireRole } from "@/lib/auth";
 import EventForm from "./EventForm";
 import ClaimsSection from "./ClaimsSection";
+import OrganisersSection from "./OrganisersSection";
 import { deleteEvent } from "./actions";
 import { eventWhen } from "./when";
 
@@ -36,33 +37,41 @@ export default async function OrgPage({ params }: { params: Promise<{ orgId: str
   // version of a page that is entirely management.
   await requireRole(orgId, ["ORG_ADMIN"]);
 
-  // What people have said they are bringing in but nobody has logged yet.
-  const { data: notices } = await supabase
+  // A public venue's desk is open all year and runs no events, so there is
+  // nothing to schedule and nothing to list.
+  const isPublic = org.type === "PUBLIC";
+
+  // Notices and events are independent of each other — run them in one
+  // wall-clock wait instead of two sequential ones.
+  const noticesPromise = supabase
     .from("found_notices")
     .select("id,description,contact,created_at,event_id")
     .eq("org_id", orgId)
     .eq("status", "OPEN")
     .order("created_at", { ascending: false })
     .limit(20);
+
+  const eventsPromise = isPublic
+    ? null
+    : supabase
+        .from("events")
+        .select("id,name,event_date,end_date,starts_at,ends_at,capacity,price_inr")
+        .eq("org_id", orgId)
+        .order("event_date");
+
+  const [{ data: notices }, eventsResult] = await Promise.all([
+    noticesPromise,
+    eventsPromise ?? Promise.resolve(null),
+  ]);
+
   const noticeList = (notices ?? []) as {
     id: string;
     description: string;
     contact: string | null;
     created_at: string;
   }[];
-
-  // A public venue's desk is open all year and runs no events, so there is
-  // nothing to schedule and nothing to list.
-  const isPublic = org.type === "PUBLIC";
-
-  const { data: events, error: eventsError } = isPublic
-    ? { data: [], error: null }
-    : await supabase
-    .from("events")
-    .select("id,name,event_date,end_date,starts_at,ends_at,capacity,price_inr")
-    .eq("org_id", orgId)
-    .order("event_date");
-  const eventList = (events ?? []) as EventRow[];
+  const eventList = (eventsResult?.data ?? []) as EventRow[];
+  const eventsError = eventsResult?.error ?? null;
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-lg flex-col px-6 pb-16">
@@ -171,6 +180,8 @@ export default async function OrgPage({ params }: { params: Promise<{ orgId: str
         <EventForm orgId={orgId} />
       </section>
       )}
+
+      <OrganisersSection orgId={orgId} />
     </main>
   );
 }
