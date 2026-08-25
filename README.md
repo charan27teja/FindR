@@ -2,6 +2,8 @@
 
 Welcome to FindR, a professional multiple tenant lost and found platform designed to streamline item intake and secure claiming processes.
 
+Deployed in-beta version: https://findr-web-five.vercel.app/
+
 ## Project Overview
 
 FindR simplifies the process of managing lost items across various organizations. By leveraging advanced artificial intelligence and vision models, the application allows staff members to photograph found items, automatically filling in descriptive attributes and saving valuable time.
